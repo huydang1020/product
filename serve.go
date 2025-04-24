@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	pb "github.com/huyshop/header/product"
-	"github.com/huyshop/user/db"
+	"github.com/huyshop/product/db"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
@@ -20,7 +20,33 @@ type Product struct {
 	cache *redis.Client
 }
 
-type IDatabase interface{}
+type IDatabase interface {
+	CreateCategory(category *pb.Category) error
+	UpdateCategory(updator, selector *pb.Category) error
+	ListCategory(rq *pb.CategoryRequest) ([]*pb.Category, error)
+	GetCategory(id string) (*pb.Category, error)
+	DeleteCategory(category *pb.Category) error
+	CountCategory(rq *pb.CategoryRequest) (int64, error)
+
+	CreateProduct(product *pb.Product) error
+	UpdateProduct(updator, selector *pb.Product) error
+	DeleteProduct(product *pb.Product) error
+	ListProduct(rq *pb.ProductRequest) ([]*pb.Product, error)
+	GetProduct(id string) (*pb.Product, error)
+	CountProduct(rq *pb.ProductRequest) (int64, error)
+
+	CreateProductType(productType *pb.ProductType) error
+	UpdateProductType(updator, selector *pb.ProductType) error
+	DeleteProductType(id string) error
+	ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, error)
+	GetProductType(id string) (*pb.ProductType, error)
+	CountProductType(rq *pb.ProductTypeRequest) (int64, error)
+
+	TransCreateProductType(pt *pb.ProductType) error
+	TransUpdateStateProductType(pt *pb.ProductType) error
+	TransUpdateProductType(in *pb.ProductType) error
+	TransDeleteProductType(ptid string) error
+}
 
 func NewRedisCache(addr, pw string, db int) *redis.Client {
 	client := redis.NewClient(&redis.Options{

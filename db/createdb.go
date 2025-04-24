@@ -3,14 +3,18 @@ package db
 import (
 	"log"
 
+	pb "github.com/huyshop/header/product"
 	"xorm.io/xorm"
 )
 
 const (
-	tblProduct = "product"
+	tblProductType = "product_type"
+	tblProduct     = "product"
+	tblCategory    = "category"
 )
 
 func createTable(model interface{}, tblName string, engine *xorm.Engine) error {
+	log.Println("createTable", tblName)
 	b, err := engine.IsTableExist(model)
 	if err != nil {
 		return err
@@ -32,8 +36,14 @@ func createTable(model interface{}, tblName string, engine *xorm.Engine) error {
 }
 
 func (d *DB) CreateDb() error {
-	// if err := createTable(&pb.Product{}, tblProduct, d.engine); err != nil {
-	// 	return err
-	// }
+	if err := createTable(&pb.Product{}, tblProduct, d.engine); err != nil {
+		return err
+	}
+	if err := createTable(&pb.ProductType{}, tblProductType, d.engine); err != nil {
+		return err
+	}
+	if err := createTable(&pb.Category{}, tblCategory, d.engine); err != nil {
+		return err
+	}
 	return nil
 }

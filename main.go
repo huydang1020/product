@@ -9,7 +9,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/huyshop/user/db"
+	"github.com/huyshop/product/db"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"
 )
