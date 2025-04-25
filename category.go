@@ -19,9 +19,7 @@ func (p *Product) CreateCategory(ctx context.Context, req *pb.Category) (*common
 	// }
 	req.Id = utils.MakeCategoryId()
 	req.CreatedAt = time.Now().Unix()
-	if req.State == "" {
-		req.State = pb.Category_active.String()
-	}
+	req.State = pb.Category_active.String()
 	if err := p.Db.CreateCategory(req); err != nil {
 		return nil, err
 	}
