@@ -88,6 +88,9 @@ func (d *DB) listCategoryQuery(rq *pb.CategoryRequest) *xorm.Session {
 	if rq.GetName() != "" {
 		ss.Where("name like ?", "%"+rq.GetName()+"%")
 	}
+	if rq.GetState() != "" {
+		ss.Where("state = ?", rq.GetState())
+	}
 	return ss
 }
 

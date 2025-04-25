@@ -14,11 +14,14 @@ func (p *Product) CreateCategory(ctx context.Context, req *pb.Category) (*common
 	if req.Name == "" {
 		return nil, errors.New(utils.E_category_name_empty)
 	}
-	if req.GetLogo() == "" {
-		return nil, errors.New(utils.E_category_logo_empty)
-	}
+	// if req.GetLogo() == "" {
+	// 	return nil, errors.New(utils.E_category_logo_empty)
+	// }
 	req.Id = utils.MakeCategoryId()
 	req.CreatedAt = time.Now().Unix()
+	if req.State == "" {
+		req.State = pb.Category_active.String()
+	}
 	if err := p.Db.CreateCategory(req); err != nil {
 		return nil, err
 	}
@@ -53,6 +56,9 @@ func (p *Product) GetCategory(ctx context.Context, req *pb.CategoryRequest) (*pb
 }
 
 func (p *Product) DeleteCategory(ctx context.Context, req *pb.Category) (*common.Empty, error) {
+	if req.GetId() == "" {
+		return nil, errors.New(utils.E_not_found_category_id)
+	}
 	if err := p.Db.DeleteCategory(req); err != nil {
 		return nil, err
 	}
