@@ -27,17 +27,11 @@ func (p *Product) CreateProductType(ctx context.Context, req *pb.ProductType) (*
 	if req.StoreId == "" {
 		return nil, errors.New(utils.E_invalid_store_id)
 	}
-	if utils.ContainsBannedWords(req.GetName()) || utils.ContainsBannedWords(req.GetDescription()) {
-		return nil, errors.New(utils.E_product_banner_word)
-	}
 	req.CreatedAt = time.Now().Unix()
 	req.Id = utils.MakeProductTypeId()
 	for _, pro := range req.GetProducts() {
 		if pro.GetName() == "" {
 			return nil, errors.New(utils.E_invalid_name)
-		}
-		if utils.ContainsBannedWords(pro.GetName()) {
-			req.State = pb.ProductType_approving.String()
 		}
 		if pro.GetId() == "" {
 			pro.Id = utils.MakeProductId()
@@ -60,23 +54,8 @@ func (p *Product) UpdateProductType(ctx context.Context, req *pb.ProductType) (*
 	if req.GetId() == "" {
 		return nil, errors.New(utils.E_not_found_id)
 	}
-	if req.GetName() != "" {
-		if utils.ContainsBannedWords(req.GetName()) {
-			return nil, errors.New(utils.E_product_banner_word)
-		}
-	}
-	if req.GetDescription() != "" {
-		if utils.ContainsBannedWords(req.GetDescription()) {
-			return nil, errors.New(utils.E_product_banner_word)
-		}
-	}
 	req.UpdatedAt = time.Now().Unix()
 	for _, pro := range req.GetProducts() {
-		if pro.GetName() != "" {
-			if utils.ContainsBannedWords(pro.GetName()) {
-				req.State = pb.ProductType_approving.String()
-			}
-		}
 		pro.UpdatedAt = req.GetUpdatedAt()
 		if req.GetState() != pb.ProductType_active.String() {
 			pro.State = req.GetState()
