@@ -21,7 +21,7 @@ func (p *Product) CreateCategory(ctx context.Context, req *pb.Category) (*common
 	req.CreatedAt = time.Now().Unix()
 	req.State = pb.Category_active.String()
 	if err := p.Db.CreateCategory(req); err != nil {
-		return nil, err
+		return nil, errors.New(utils.E_can_not_insert)
 	}
 	return &common.Empty{}, nil
 }
@@ -32,7 +32,7 @@ func (p *Product) UpdateCategory(ctx context.Context, req *pb.Category) (*common
 	}
 	req.UpdatedAt = time.Now().Unix()
 	if err := p.Db.UpdateCategory(req, &pb.Category{Id: req.GetId()}); err != nil {
-		return nil, err
+		return nil, errors.New(utils.E_can_not_update)
 	}
 	return &common.Empty{}, nil
 }
@@ -40,15 +40,19 @@ func (p *Product) UpdateCategory(ctx context.Context, req *pb.Category) (*common
 func (p *Product) ListCategory(ctx context.Context, req *pb.CategoryRequest) (*pb.Categories, error) {
 	cates, err := p.Db.ListCategory(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(utils.E_internal_error)
 	}
-	return &pb.Categories{Categories: cates}, nil
+	count, err := p.Db.CountCategory(req)
+	if err != nil {
+		return nil, errors.New(utils.E_internal_error)
+	}
+	return &pb.Categories{Categories: cates, Total: int32(count)}, nil
 }
 
 func (p *Product) GetCategory(ctx context.Context, req *pb.CategoryRequest) (*pb.Category, error) {
 	cate, err := p.Db.GetCategory(req.Id)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(utils.E_internal_error)
 	}
 	return cate, nil
 }
@@ -58,10 +62,7 @@ func (p *Product) DeleteCategory(ctx context.Context, req *pb.Category) (*common
 		return nil, errors.New(utils.E_not_found_category_id)
 	}
 	if err := p.Db.DeleteCategory(req); err != nil {
-		return nil, err
-	}
-	if err := p.cache.Del(ctx, req.Id).Err(); err != nil {
-		return nil, err
+		return nil, errors.New(utils.E_internal_error)
 	}
 	return &common.Empty{}, nil
 }
