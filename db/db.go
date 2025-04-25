@@ -86,10 +86,10 @@ func (d *DB) listCategoryQuery(rq *pb.CategoryRequest) *xorm.Session {
 		ss.In("id", rq.GetIds())
 	}
 	if rq.GetName() != "" {
-		ss.Where("name like ?", "%"+rq.GetName()+"%")
+		ss.And("name like ?", "%"+rq.GetName()+"%")
 	}
 	if rq.GetState() != "" {
-		ss.Where("state = ?", rq.GetState())
+		ss.And("state = ?", rq.GetState())
 	}
 	return ss
 }
@@ -158,19 +158,30 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	if rq.GetIds() != nil {
 		ss.In("id", rq.GetIds())
 	} else if rq.GetId() != "" {
-		ss.Where("id = ?", rq.GetId())
+		ss.And("id = ?", rq.GetId())
 	}
 	if rq.GetName() != "" {
-		ss.Where("name like ?", "%"+rq.GetName()+"%")
+		ss.And("name like ?", "%"+rq.GetName()+"%")
 	}
 	if rq.GetCategoryId() != "" {
-		ss.Where("category_id = ?", rq.GetCategoryId())
+		ss.And("category_id = ?", rq.GetCategoryId())
 	}
 	if rq.GetBrand() != "" {
-		ss.Where("brand = ?", rq.GetBrand())
+		ss.And("brand = ?", rq.GetBrand())
 	}
 	if rq.GetOrigin() != "" {
-		ss.Where("origin = ?", rq.GetOrigin())
+		ss.And("origin = ?", rq.GetOrigin())
+	}
+	if rq.GetState() != "" {
+		ss.And("state = ?", rq.GetState())
+	}
+	if len(rq.GetPartnerIds()) > 0 {
+		ss.In("partner_id", rq.GetPartnerIds())
+	} else if rq.GetPartnerId() != "" {
+		ss.And("partner_id = ?", rq.GetPartnerId())
+	}
+	if rq.GetStoreId() != "" {
+		ss.And("store_id = ?", rq.GetStoreId())
 	}
 	return ss
 }
@@ -238,18 +249,18 @@ func (d *DB) listProductQuery(rq *pb.ProductRequest) *xorm.Session {
 	if rq.GetIds() != nil {
 		ss.In("id", rq.GetIds())
 	} else if rq.GetId() != "" {
-		ss.Where("id = ?", rq.GetId())
+		ss.And("id = ?", rq.GetId())
 	}
 	if rq.GetName() != "" {
-		ss.Where("name like ?", "%"+rq.GetName()+"%")
+		ss.And("name like ?", "%"+rq.GetName()+"%")
 	}
 	if rq.GetState() != "" {
-		ss.Where("state = ?", rq.GetState())
+		ss.And("state = ?", rq.GetState())
 	}
 	if len(rq.GetProductTypeIds()) > 0 {
 		ss.In("product_type_id", rq.GetProductTypeIds())
 	} else if rq.GetProductTypeId() != "" {
-		ss.Where("product_type_id = ?", rq.GetProductTypeId())
+		ss.And("product_type_id = ?", rq.GetProductTypeId())
 	}
 	return ss
 }
