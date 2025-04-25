@@ -60,8 +60,6 @@ func (p *Product) UpdateProductType(ctx context.Context, req *pb.ProductType) (*
 		if req.GetState() != pb.ProductType_active.String() {
 			pro.State = req.GetState()
 		}
-		log.Println("image: ", pro.Images)
-
 	}
 	if err := p.Db.TransUpdateProductType(req); err != nil {
 		log.Println("UpdateProductType error:", err)
