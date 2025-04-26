@@ -34,4 +34,5 @@ const (
 	E_not_found_category_id       = "not_found_category_id"
 	E_category_logo_empty         = "category_logo_empty"
 	E_invalid_store_id            = "invalid_store_id"
+	E_invalid_price               = "invalid_price"
 )

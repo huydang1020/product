@@ -307,6 +307,9 @@ func (d *DB) TransCreateProductType(pt *pb.ProductType) error {
 	}
 
 	for _, pro := range pt.Products {
+		if pro.GetOriginPrice() < 0 || pro.GetSellPrice() < 0 {
+			return errors.New(utils.E_invalid_price)
+		}
 		if _, err := sess.Insert(pro); err != nil {
 			log.Print(err)
 			sess.Rollback()
@@ -352,6 +355,9 @@ func (d *DB) TransUpdateProductType(in *pb.ProductType) error {
 	for _, pro := range in.GetProducts() {
 		if pro.GetState() == "" {
 			pro.State = in.GetState()
+		}
+		if pro.GetOriginPrice() < 0 || pro.GetSellPrice() < 0 {
+			return errors.New(utils.E_invalid_price)
 		}
 		_, has := mProducts[pro.Id]
 		if has {
