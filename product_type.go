@@ -99,10 +99,10 @@ func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeReques
 		if len(listPr) > 0 {
 			pty.Products = listPr
 		}
-		cate, err := p.Db.GetCategory(req.GetCategoryId())
+		cate, err := p.Db.GetCategory(pty.GetCategoryId())
 		if err != nil {
 			log.Println("GetCategory error:", err)
-			return nil, errors.New(utils.E_internal_error)
+			continue
 		}
 		pty.Category = cate
 	}

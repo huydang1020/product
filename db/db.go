@@ -74,8 +74,12 @@ func (d *DB) DeleteCategory(category *pb.Category) error {
 
 func (d *DB) GetCategory(id string) (*pb.Category, error) {
 	category := &pb.Category{Id: id}
-	if _, err := d.engine.Get(category); err != nil {
+	exist, err := d.engine.Get(category)
+	if err != nil {
 		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_category)
 	}
 	return category, nil
 }
@@ -147,8 +151,12 @@ func (d *DB) DeleteProductType(id string) error {
 
 func (d *DB) GetProductType(id string) (*pb.ProductType, error) {
 	productType := &pb.ProductType{Id: id}
-	if _, err := d.engine.Get(productType); err != nil {
+	exist, err := d.engine.Get(productType)
+	if err != nil {
 		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_product_type)
 	}
 	return productType, nil
 }
@@ -232,8 +240,12 @@ func (d *DB) DeleteProduct(product *pb.Product) error {
 
 func (d *DB) GetProduct(id string) (*pb.Product, error) {
 	product := &pb.Product{Id: id}
-	if _, err := d.engine.Get(product); err != nil {
+	exist, err := d.engine.Get(product)
+	if err != nil {
 		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_product)
 	}
 	return product, nil
 }
