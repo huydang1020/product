@@ -22,7 +22,7 @@ func (p *Product) CreateProductType(ctx context.Context, req *pb.ProductType) (*
 		return nil, errors.New(utils.E_invalid_name)
 	}
 	if req.GetState() == "" {
-		req.State = pb.ProductType_approving.String()
+		req.State = pb.ProductType_pending.String()
 	}
 	if req.StoreId == "" {
 		return nil, errors.New(utils.E_invalid_store_id)
@@ -82,7 +82,7 @@ func (p *Product) UpdateStateProductType(ctx context.Context, req *pb.ProductTyp
 	return &common.Empty{}, nil
 }
 func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeRequest) (*pb.ProductTypes, error) {
-	log.Println("ListProductType", req)
+	log.Println("ListProductType req", req)
 	productTypes, err := p.Db.ListProductType(req)
 	if err != nil {
 		return nil, err
@@ -99,6 +99,12 @@ func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeReques
 		if len(listPr) > 0 {
 			pty.Products = listPr
 		}
+		cate, err := p.Db.GetCategory(req.GetCategoryId())
+		if err != nil {
+			log.Println("GetCategory error:", err)
+			return nil, errors.New(utils.E_internal_error)
+		}
+		pty.Category = cate
 	}
 	count, err := p.Db.CountProductType(req)
 	if err != nil {

@@ -73,8 +73,8 @@ func (d *DB) DeleteCategory(category *pb.Category) error {
 }
 
 func (d *DB) GetCategory(id string) (*pb.Category, error) {
-	category := &pb.Category{}
-	if _, err := d.engine.ID(id).Get(category); err != nil {
+	category := &pb.Category{Id: id}
+	if _, err := d.engine.Get(category); err != nil {
 		return nil, err
 	}
 	return category, nil
@@ -146,8 +146,8 @@ func (d *DB) DeleteProductType(id string) error {
 }
 
 func (d *DB) GetProductType(id string) (*pb.ProductType, error) {
-	productType := &pb.ProductType{}
-	if _, err := d.engine.ID(id).Get(productType); err != nil {
+	productType := &pb.ProductType{Id: id}
+	if _, err := d.engine.Get(productType); err != nil {
 		return nil, err
 	}
 	return productType, nil
@@ -237,8 +237,8 @@ func (d *DB) DeleteProduct(product *pb.Product) error {
 }
 
 func (d *DB) GetProduct(id string) (*pb.Product, error) {
-	product := &pb.Product{}
-	if _, err := d.engine.ID(id).Get(product); err != nil {
+	product := &pb.Product{Id: id}
+	if _, err := d.engine.Get(product); err != nil {
 		return nil, err
 	}
 	return product, nil
