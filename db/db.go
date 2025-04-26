@@ -166,12 +166,6 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	if rq.GetCategoryId() != "" {
 		ss.And("category_id = ?", rq.GetCategoryId())
 	}
-	if rq.GetBrand() != "" {
-		ss.And("brand = ?", rq.GetBrand())
-	}
-	if rq.GetOrigin() != "" {
-		ss.And("origin = ?", rq.GetOrigin())
-	}
 	if rq.GetState() != "" {
 		ss.And("state = ?", rq.GetState())
 	}
