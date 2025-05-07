@@ -36,4 +36,8 @@ const (
 	E_invalid_store_id            = "invalid_store_id"
 	E_invalid_price               = "invalid_price"
 	E_not_found_category          = "not_found_category"
+	E_banner_name_empty           = "banner_name_empty"
+	E_banner_logo_empty           = "banner_logo_empty"
+	E_not_found_banner_id         = "not_found_banner_id"
+	E_not_found_banner            = "not_found_banner"
 )

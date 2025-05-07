@@ -487,3 +487,79 @@ func (d *DB) TransDeleteProductType(ptid string) error {
 
 	return sess.Commit()
 }
+
+func (d *DB) CreateBanner(banner *pb.Banner) error {
+	c, err := d.engine.Insert(banner)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_insert)
+	}
+	return nil
+}
+
+func (d *DB) UpdateBanner(updator, selector *pb.Banner) error {
+	c, err := d.engine.Update(updator, selector)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		log.Println("update banner failed")
+		return nil
+	}
+	return nil
+}
+
+func (d *DB) DeleteBanner(banner *pb.Banner) error {
+	c, err := d.engine.ID(banner.Id).Delete(banner)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_delete)
+	}
+	return nil
+}
+
+func (d *DB) GetBanner(id string) (*pb.Banner, error) {
+	banner := &pb.Banner{Id: id}
+	exist, err := d.engine.Get(banner)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_banner)
+	}
+	return banner, nil
+}
+
+func (d *DB) listBannerQuery(rq *pb.BannerRequest) *xorm.Session {
+	ss := d.engine.Table(tblBanner)
+	if rq.GetIds() != nil {
+		ss.In("id", rq.GetIds())
+	}
+	if rq.GetName() != "" {
+		ss.And("name like ?", "%"+rq.GetName()+"%")
+	}
+	if rq.GetState() != "" {
+		ss.And("state = ?", rq.GetState())
+	}
+	return ss
+}
+
+func (d *DB) ListBanner(rq *pb.BannerRequest) ([]*pb.Banner, error) {
+	categories := make([]*pb.Banner, 0)
+	ss := d.listBannerQuery(rq)
+	if rq.GetLimit() > 0 {
+		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
+	}
+	if err := ss.Find(&categories); err != nil {
+		return nil, err
+	}
+	return categories, nil
+}
+
+func (d *DB) CountBanner(rq *pb.BannerRequest) (int64, error) {
+	return d.listBannerQuery(rq).Count()
+}

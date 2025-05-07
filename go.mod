@@ -2,7 +2,7 @@ module github.com/huyshop/product
 
 go 1.23.7
 
-replace github.com/huyshop/header v0.0.39 => ../header
+replace github.com/huyshop/header v0.0.40 => ../header
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
@@ -30,11 +30,11 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/huyshop/header v0.0.40
+	github.com/huyshop/header v0.0.41
 	golang.org/x/net v0.37.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/grpc v1.71.0
 	google.golang.org/protobuf v1.36.5 // indirect
-	xorm.io/builder v0.3.13
+	xorm.io/builder v0.3.13 // indirect
 )

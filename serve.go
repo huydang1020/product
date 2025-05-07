@@ -46,6 +46,13 @@ type IDatabase interface {
 	TransUpdateStateProductType(pt *pb.ProductType) error
 	TransUpdateProductType(in *pb.ProductType) error
 	TransDeleteProductType(ptid string) error
+
+	CreateBanner(banner *pb.Banner) error
+	UpdateBanner(updator, selector *pb.Banner) error
+	DeleteBanner(banner *pb.Banner) error
+	ListBanner(rq *pb.BannerRequest) ([]*pb.Banner, error)
+	GetBanner(id string) (*pb.Banner, error)
+	CountBanner(rq *pb.BannerRequest) (int64, error)
 }
 
 func NewRedisCache(addr, pw string, db int) *redis.Client {

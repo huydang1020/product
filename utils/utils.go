@@ -15,3 +15,7 @@ func MakeProductId() string {
 func MakeProductTypeId() string {
 	return "pty" + xid.New().String()
 }
+
+func MakeBannerId() string {
+	return "ban" + xid.New().String()
+}
