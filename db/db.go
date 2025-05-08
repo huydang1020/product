@@ -545,6 +545,9 @@ func (d *DB) listBannerQuery(rq *pb.BannerRequest) *xorm.Session {
 	if rq.GetState() != "" {
 		ss.And("state = ?", rq.GetState())
 	}
+	if rq.GetType() != "" {
+		ss.And("type = ?", rq.GetType())
+	}
 	return ss
 }
 
