@@ -195,7 +195,6 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 }
 
 func (d *DB) ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, error) {
-	d.engine.ShowSQL(true)
 	productTypes := make([]*pb.ProductType, 0)
 	ss := d.listProductTypeQuery(rq)
 	if rq.GetLimit() > 0 {
