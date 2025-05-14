@@ -186,10 +186,10 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 		ss.And("store_id = ?", rq.GetStoreId())
 	}
 	if rq.GetQuantitySold() > 0 {
-		ss.And("quantity_sold = ?", rq.GetQuantitySold())
+		ss.And("quantity_sold >= ?", rq.GetQuantitySold())
 	}
 	if rq.GetQuantitySearch() > 0 {
-		ss.And("quantity_search = ?", rq.GetQuantitySearch())
+		ss.And("quantity_search >= ?", rq.GetQuantitySearch())
 	}
 	return ss
 }
