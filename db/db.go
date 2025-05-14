@@ -185,16 +185,23 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	if rq.GetStoreId() != "" {
 		ss.And("store_id = ?", rq.GetStoreId())
 	}
+	if rq.GetQuantitySold() > 0 {
+		ss.And("quantity_sold = ?", rq.GetQuantitySold())
+	}
+	if rq.GetQuantitySearch() > 0 {
+		ss.And("quantity_search = ?", rq.GetQuantitySearch())
+	}
 	return ss
 }
 
 func (d *DB) ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, error) {
+	d.engine.ShowSQL(true)
 	productTypes := make([]*pb.ProductType, 0)
 	ss := d.listProductTypeQuery(rq)
 	if rq.GetLimit() > 0 {
 		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
 	}
-	if err := ss.Find(&productTypes); err != nil {
+	if err := ss.Desc(rq.GetOrderBy()).Find(&productTypes); err != nil {
 		return nil, err
 	}
 	return productTypes, nil
@@ -565,4 +572,79 @@ func (d *DB) ListBanner(rq *pb.BannerRequest) ([]*pb.Banner, error) {
 
 func (d *DB) CountBanner(rq *pb.BannerRequest) (int64, error) {
 	return d.listBannerQuery(rq).Count()
+}
+
+func (d *DB) CreateOrder(order *pb.Order) error {
+	c, err := d.engine.Insert(order)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_insert)
+	}
+	return nil
+}
+func (d *DB) UpdateOrder(updator, selector *pb.Order) error {
+	c, err := d.engine.Update(updator, selector)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		log.Println("update order failed")
+		return nil
+	}
+	return nil
+}
+func (d *DB) DeleteOrder(order *pb.Order) error {
+	c, err := d.engine.ID(order.Id).Delete(order)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_delete)
+	}
+	return nil
+}
+func (d *DB) GetOrder(id string) (*pb.Order, error) {
+	order := &pb.Order{Id: id}
+	exist, err := d.engine.Get(order)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_order)
+	}
+	return order, nil
+}
+
+func (d *DB) listOrderQuery(rq *pb.OrderRequest) *xorm.Session {
+	ss := d.engine.Table(tblOrder)
+	if rq.GetIds() != nil {
+		ss.In("id", rq.GetIds())
+	} else if rq.GetId() != "" {
+		ss.And("id = ?", rq.GetId())
+	}
+	if rq.GetUserId() != "" {
+		ss.And("user_id = ?", rq.GetUserId())
+	}
+	if rq.GetState() != "" {
+		ss.And("state = ?", rq.GetState())
+	}
+	return ss
+}
+
+func (d *DB) ListOrder(rq *pb.OrderRequest) ([]*pb.Order, error) {
+	orders := make([]*pb.Order, 0)
+	ss := d.listOrderQuery(rq)
+	if rq.GetLimit() > 0 {
+		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
+	}
+	if err := ss.Find(&orders); err != nil {
+		return nil, err
+	}
+	return orders, nil
+}
+
+func (d *DB) CountOrder(rq *pb.OrderRequest) (int64, error) {
+	return d.listOrderQuery(rq).Count()
 }

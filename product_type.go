@@ -118,12 +118,19 @@ func (p *Product) GetProductType(ctx context.Context, req *pb.ProductTypeRequest
 	if req.GetId() == "" {
 		return nil, errors.New(utils.E_not_found_id)
 	}
-	productType, err := p.Db.GetProductType(req.Id)
+	pty, err := p.Db.GetProductType(req.Id)
 	if err != nil {
 		log.Println("GetProductType error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	return productType, nil
+	listPr, err := p.Db.ListProduct(&pb.ProductRequest{ProductTypeId: pty.Id})
+	if err != nil {
+		log.Println("ListProductType error:", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	pty.Products = listPr
+
+	return pty, nil
 }
 
 func (p *Product) DeleteProductType(ctx context.Context, req *pb.ProductType) (*common.Empty, error) {

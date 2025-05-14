@@ -12,6 +12,7 @@ const (
 	tblProduct     = "product"
 	tblCategory    = "category"
 	tblBanner      = "banner"
+	tblOrder       = "order"
 )
 
 func createTable(model interface{}, tblName string, engine *xorm.Engine) error {
@@ -47,6 +48,9 @@ func (d *DB) CreateDb() error {
 		return err
 	}
 	if err := createTable(&pb.Banner{}, tblBanner, d.engine); err != nil {
+		return err
+	}
+	if err := createTable(&pb.Order{}, tblOrder, d.engine); err != nil {
 		return err
 	}
 	return nil

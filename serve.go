@@ -53,6 +53,13 @@ type IDatabase interface {
 	ListBanner(rq *pb.BannerRequest) ([]*pb.Banner, error)
 	GetBanner(id string) (*pb.Banner, error)
 	CountBanner(rq *pb.BannerRequest) (int64, error)
+
+	CreateOrder(order *pb.Order) error
+	UpdateOrder(updator, selector *pb.Order) error
+	DeleteOrder(order *pb.Order) error
+	ListOrder(rq *pb.OrderRequest) ([]*pb.Order, error)
+	GetOrder(id string) (*pb.Order, error)
+	CountOrder(rq *pb.OrderRequest) (int64, error)
 }
 
 func NewRedisCache(addr, pw string, db int) *redis.Client {
