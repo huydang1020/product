@@ -46,4 +46,11 @@ const (
 	E_not_found_order               = "not_found_order"
 	E_not_found_item_cart           = "not_found_item_cart"
 	E_inventory_quantity_not_enough = "inventory_quantity_not_enough"
+	E_not_found_product_id          = "not_found_product_id"
+	E_invalid_amount_product        = "invalid_amount_product"
+	E_invalid_method_payment        = "invalid_method_payment"
+	E_invalid_receiver_name         = "invalid_receiver_name"
+	E_invalid_receiver_address      = "invalid_receiver_address"
+	E_invalid_receiver_phone        = "invalid_receiver_phone"
+	E_not_found_order_code          = "not_found_order_code"
 )

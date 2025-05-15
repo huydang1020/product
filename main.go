@@ -15,12 +15,13 @@ import (
 )
 
 type Configs struct {
-	GRPCPort      string
-	DBPath        string
-	DBName        string
-	RedisAddr     string
-	RedisPassword string
-	RedisDb       string
+	GRPCPort        string
+	DBPath          string
+	DBName          string
+	RedisAddr       string
+	RedisPassword   string
+	RedisDb         string
+	RedisCartExpire string
 }
 
 var config *Configs
@@ -32,12 +33,13 @@ func init() {
 		log.Fatal("Error loading env:", err)
 	}
 	config = &Configs{
-		GRPCPort:      os.Getenv("GRPC_PORT"),
-		DBPath:        os.Getenv("DB_PATH"),
-		DBName:        os.Getenv("DB_NAME"),
-		RedisAddr:     os.Getenv("REDIS_ADDR"),
-		RedisPassword: os.Getenv("REDIS_PASSWORD"),
-		RedisDb:       os.Getenv("REDIS_DB"),
+		GRPCPort:        os.Getenv("GRPC_PORT"),
+		DBPath:          os.Getenv("DB_PATH"),
+		DBName:          os.Getenv("DB_NAME"),
+		RedisAddr:       os.Getenv("REDIS_ADDR"),
+		RedisPassword:   os.Getenv("REDIS_PASSWORD"),
+		RedisDb:         os.Getenv("REDIS_DB"),
+		RedisCartExpire: os.Getenv("REDIS_CART_EXPIRE"),
 	}
 }
 

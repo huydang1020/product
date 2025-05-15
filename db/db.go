@@ -647,3 +647,45 @@ func (d *DB) ListOrder(rq *pb.OrderRequest) ([]*pb.Order, error) {
 func (d *DB) CountOrder(rq *pb.OrderRequest) (int64, error) {
 	return d.listOrderQuery(rq).Count()
 }
+
+func (d *DB) TransCreateOrder(order *pb.Order) error {
+	sess := d.engine.NewSession()
+	defer sess.Close()
+	// Start transaction.
+	if err := sess.Begin(); err != nil {
+		return err
+	}
+
+	// Insert the order.
+	if _, err := sess.Insert(order); err != nil {
+		log.Print(err)
+		sess.Rollback()
+		return errors.New(utils.E_not_found)
+	}
+	// Update the quantity sold for each product in the order.
+	for _, orderItem := range order.GetOrderDetail() {
+		productType, err := d.GetProductType(orderItem.Product.GetProductTypeId())
+		if err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_not_found_product_type)
+		}
+		// Update quantity sold.
+		_, err = sess.Exec("UPDATE product_type SET quantity_sold = quantity_sold + ? WHERE id = ?", orderItem.GetQuantity(), productType.GetId())
+		if err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_can_not_update_product)
+		}
+
+		// Decrease available quantity.
+		_, err = sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", orderItem.GetQuantity(), orderItem.GetProductId())
+		if err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_can_not_update_product)
+		}
+	}
+	log.Println("done")
+	return sess.Commit()
+}
