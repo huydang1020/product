@@ -83,8 +83,12 @@ func (p *Product) UpdateStateProductType(ctx context.Context, req *pb.ProductTyp
 }
 func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeRequest) (*pb.ProductTypes, error) {
 	log.Println("ListProductType req", req)
+	if req.GetOrderBy() == "" {
+		req.OrderBy = "created_at"
+	}
 	productTypes, err := p.Db.ListProductType(req)
 	if err != nil {
+		log.Println("err", err)
 		return nil, err
 	}
 	if len(productTypes) == 0 {
@@ -141,4 +145,13 @@ func (p *Product) DeleteProductType(ctx context.Context, req *pb.ProductType) (*
 		return nil, errors.New(utils.E_can_not_delete_product_type)
 	}
 	return &common.Empty{}, nil
+}
+
+func (p Product) CountProductType(ctx context.Context, req *pb.ProductTypeRequest) (*common.Count, error) {
+	count, err := p.Db.CountProductType(req)
+	if err != nil {
+		log.Println("CountProductType error:", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	return &common.Count{Count: count}, nil
 }

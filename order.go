@@ -68,7 +68,7 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 		}
 		price := float64(prod.SellPrice) * float64(ord.Quantity)
 		totalMoney += price
-		ord.Product = prod
+		ord.Product.ProductTypeId = prod.ProductTypeId
 	}
 	req.Id = utils.MakeOrderId()
 	randNumber := rand.Intn(99999999999999-10000000000000) + 10000000000000
