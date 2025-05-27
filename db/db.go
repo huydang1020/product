@@ -662,6 +662,16 @@ func (d *DB) TransCreateOrder(order *pb.Order) error {
 		sess.Rollback()
 		return errors.New(utils.E_not_found)
 	}
+
+	// Update the quantity sold for each product in the order.
+	for _, orderItem := range order.GetOrderDetail() {
+		_, err := sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", orderItem.GetQuantity(), orderItem.GetProductId())
+		if err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_can_not_update_product)
+		}
+	}
 	log.Println("done")
 	return sess.Commit()
 }
