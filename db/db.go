@@ -662,9 +662,28 @@ func (d *DB) TransCreateOrder(order *pb.Order) error {
 		sess.Rollback()
 		return errors.New(utils.E_not_found)
 	}
+	log.Println("done")
+	return sess.Commit()
+}
+
+// update quantity of product in order
+func (d *DB) TransUpdateOrder(order *pb.Order) error {
+	sess := d.engine.NewSession()
+	defer sess.Close()
+	// Start transaction.
+	if err := sess.Begin(); err != nil {
+		return err
+	}
+
 	// Update the quantity sold for each product in the order.
 	for _, orderItem := range order.GetOrderDetail() {
-		productType, err := d.GetProductType(orderItem.Product.GetProductTypeId())
+		prod, err := d.GetProduct(orderItem.GetProductId())
+		if err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_not_found_product)
+		}
+		productType, err := d.GetProductType(prod.GetProductTypeId())
 		if err != nil {
 			log.Print(err)
 			sess.Rollback()
@@ -686,6 +705,5 @@ func (d *DB) TransCreateOrder(order *pb.Order) error {
 			return errors.New(utils.E_can_not_update_product)
 		}
 	}
-	log.Println("done")
 	return sess.Commit()
 }

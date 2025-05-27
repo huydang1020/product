@@ -61,6 +61,7 @@ type IDatabase interface {
 	GetOrder(id string) (*pb.Order, error)
 	CountOrder(rq *pb.OrderRequest) (int64, error)
 	TransCreateOrder(order *pb.Order) error
+	TransUpdateOrder(order *pb.Order) error
 }
 
 func NewRedisCache(addr, pw string, db int) *redis.Client {

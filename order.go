@@ -68,7 +68,6 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 		}
 		price := float64(prod.SellPrice) * float64(ord.Quantity)
 		totalMoney += price
-		ord.Product.ProductTypeId = prod.ProductTypeId
 	}
 	req.Id = utils.MakeOrderId()
 	randNumber := rand.Intn(99999999999999-10000000000000) + 10000000000000
@@ -391,6 +390,7 @@ func (p *Product) DeleteCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error
 	return &pb.Cart{}, nil
 }
 func (p *Product) ListCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error) {
+	log.Println("ListCart", req)
 	if req.GetUserId() == "" {
 		return nil, errors.New(utils.E_not_found_user_id)
 	}
@@ -427,6 +427,7 @@ func (p *Product) ListCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error) 
 			return resp[i].ProductId < resp[j].ProductId
 		})
 	}
+	log.Println("ok")
 	return &pb.Cart{Item: resp, UserId: req.GetUserId()}, nil
 }
 
