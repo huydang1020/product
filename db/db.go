@@ -663,13 +663,48 @@ func (d *DB) TransCreateOrder(order *pb.Order) error {
 		return errors.New(utils.E_not_found)
 	}
 
-	// Update the quantity sold for each product in the order.
-	for _, orderItem := range order.GetOrderDetail() {
-		_, err := sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", orderItem.GetQuantity(), orderItem.GetProductId())
+	for _, orderItem := range order.GetProductOrdered() {
+		// Create order detail
+		pro, err := d.GetProduct(orderItem.GetProductId())
 		if err != nil {
 			log.Print(err)
 			sess.Rollback()
-			return errors.New(utils.E_can_not_update_product)
+			return errors.New(utils.E_not_found_product)
+		}
+		if pro.GetQuantity() < orderItem.GetQuantity() {
+			log.Printf("Not enough quantity for product %s, available: %d, requested: %d", pro.GetId(), pro.GetQuantity(), orderItem.GetQuantity())
+			sess.Rollback()
+			return errors.New(utils.E_not_enough_quantity)
+		}
+		_, err = sess.Insert(&pb.OrderDetail{
+			Id:         utils.MakeOrderDetailId(),
+			OrderId:    order.GetId(),
+			ProductId:  orderItem.GetProductId(),
+			Quantity:   orderItem.GetQuantity(),
+			TotalPrice: pro.GetSellPrice() * int64(orderItem.GetQuantity()),
+			CreatedAt:  time.Now().Unix(),
+		})
+		if err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_can_not_insert_order_detail)
+		}
+		if order.GetMethodPayment() == "online" {
+			// Update quantity sold.
+			_, err = sess.Exec("UPDATE product_type SET quantity_sold = quantity_sold + ? WHERE id = ?", orderItem.GetQuantity(), pro.GetProductTypeId())
+			if err != nil {
+				log.Print(err)
+				sess.Rollback()
+				return errors.New(utils.E_can_not_update_product)
+			}
+
+			// Update the quantity sold for each product in the order.
+			_, err = sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", orderItem.GetQuantity(), orderItem.GetProductId())
+			if err != nil {
+				log.Print(err)
+				sess.Rollback()
+				return errors.New(utils.E_can_not_update_product)
+			}
 		}
 	}
 	log.Println("done")
@@ -684,36 +719,232 @@ func (d *DB) TransUpdateOrder(order *pb.Order) error {
 	if err := sess.Begin(); err != nil {
 		return err
 	}
-
-	// Update the quantity sold for each product in the order.
-	for _, orderItem := range order.GetOrderDetail() {
-		prod, err := d.GetProduct(orderItem.GetProductId())
-		if err != nil {
-			log.Print(err)
-			sess.Rollback()
-			return errors.New(utils.E_not_found_product)
+	if _, err := sess.Update(order, &pb.Order{Id: order.Id}); err != nil {
+		log.Print(err)
+		sess.Rollback()
+		return errors.New(utils.E_not_found)
+	}
+	if order.State == pb.Order_canceled.String() {
+		if order.GetMethodPayment() == "online" {
+			// If the order is canceled, we need to restore the product quantity.
+			for _, item := range order.GetProductOrdered() {
+				pro, err := d.GetProduct(item.GetProductId())
+				if err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return errors.New(utils.E_not_found_product)
+				}
+				// Restore the product quantity.
+				_, err = sess.Exec("UPDATE product SET quantity = quantity + ? WHERE id = ?", item.GetQuantity(), item.GetProductId())
+				if err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return errors.New(utils.E_can_not_update_product)
+				}
+				// Restore the quantity sold.
+				_, err = sess.Exec("UPDATE product_type SET quantity_sold = quantity_sold - ? WHERE id = ?", item.GetQuantity(), pro.GetProductTypeId())
+				if err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return errors.New(utils.E_can_not_update_product)
+				}
+			}
 		}
-		productType, err := d.GetProductType(prod.GetProductTypeId())
-		if err != nil {
-			log.Print(err)
-			sess.Rollback()
-			return errors.New(utils.E_not_found_product_type)
-		}
-		// Update quantity sold.
-		_, err = sess.Exec("UPDATE product_type SET quantity_sold = quantity_sold + ? WHERE id = ?", orderItem.GetQuantity(), productType.GetId())
-		if err != nil {
-			log.Print(err)
-			sess.Rollback()
-			return errors.New(utils.E_can_not_update_product)
-		}
-
-		// Decrease available quantity.
-		_, err = sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", orderItem.GetQuantity(), orderItem.GetProductId())
-		if err != nil {
-			log.Print(err)
-			sess.Rollback()
-			return errors.New(utils.E_can_not_update_product)
+	}
+	if order.State == pb.Order_completed.String() {
+		if order.GetMethodPayment() == "cod" {
+			// If the order is successful, we need to update the quantity sold.
+			for _, item := range order.GetProductOrdered() {
+				pro, err := d.GetProduct(item.GetProductId())
+				if err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return errors.New(utils.E_not_found_product)
+				}
+				// Update the quantity sold.
+				_, err = sess.Exec("UPDATE product_type SET quantity_sold = quantity_sold + ? WHERE id = ?", item.GetQuantity(), pro.GetProductTypeId())
+				if err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return errors.New(utils.E_can_not_update_product)
+				}
+				// Update the quantity sold for each product in the order.
+				_, err = sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", item.GetQuantity(), item.GetProductId())
+				if err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return errors.New(utils.E_can_not_update_product)
+				}
+			}
 		}
 	}
 	return sess.Commit()
+}
+
+func (d *DB) CreateOrderDetail(req *pb.OrderDetail) error {
+	c, err := d.engine.Insert(req)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_insert_order_detail)
+	}
+	return nil
+}
+
+func (d *DB) UpdateOrderDetail(updator, selector *pb.OrderDetail) error {
+	c, err := d.engine.Update(updator, selector)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		log.Println("update order detail failed")
+		return nil
+	}
+	return nil
+}
+
+func (d *DB) DeleteOrderDetail(req *pb.OrderDetail) error {
+	c, err := d.engine.Delete(req)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_delete_order_detail)
+	}
+	return nil
+}
+
+func (d *DB) GetOrderDetail(id string) (*pb.OrderDetail, error) {
+	req := &pb.OrderDetail{Id: id}
+	exist, err := d.engine.Get(req)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_order_detail)
+	}
+	return req, nil
+}
+
+func (d *DB) listOrderDetailQuery(rq *pb.OrderDetailRequest) *xorm.Session {
+	ss := d.engine.Table(tblOrderDetail)
+	if rq.GetIds() != nil {
+		ss.In("id", rq.GetIds())
+	} else if rq.GetId() != "" {
+		ss.And("id = ?", rq.GetId())
+	}
+	if rq.GetOrderId() != "" {
+		ss.And("order_id = ?", rq.GetOrderId())
+	}
+	if rq.GetProductId() != "" {
+		ss.And("product_id = ?", rq.GetProductId())
+	}
+	if rq.GetOrderShipId() != "" {
+		ss.And("order_ship_id = ?", rq.GetOrderShipId())
+	}
+	return ss
+}
+
+func (d *DB) ListOrderDetail(rq *pb.OrderDetailRequest) ([]*pb.OrderDetail, error) {
+	orderDetails := make([]*pb.OrderDetail, 0)
+	ss := d.listOrderDetailQuery(rq)
+	if rq.GetLimit() > 0 {
+		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
+	}
+	if err := ss.Find(&orderDetails); err != nil {
+		return nil, err
+	}
+	return orderDetails, nil
+}
+
+func (d *DB) CountOrderDetail(rq *pb.OrderDetailRequest) (int64, error) {
+	return d.listOrderDetailQuery(rq).Count()
+}
+
+func (d *DB) CreateOrderShip(orderShip *pb.OrderShip) error {
+	c, err := d.engine.Insert(orderShip)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_insert_order_ship)
+	}
+	return nil
+}
+
+func (d *DB) UpdateOrderShip(updator, selector *pb.OrderShip) error {
+	c, err := d.engine.Update(updator, selector)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		log.Println("update order ship failed")
+		return nil
+	}
+	return nil
+}
+
+func (d *DB) DeleteOrderShip(orderShip *pb.OrderShip) error {
+	c, err := d.engine.ID(orderShip.Id).Delete(orderShip)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_delete_order_ship)
+	}
+	return nil
+}
+
+func (d *DB) GetOrderShip(id string) (*pb.OrderShip, error) {
+	orderShip := &pb.OrderShip{Id: id}
+	exist, err := d.engine.Get(orderShip)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_order_ship)
+	}
+	return orderShip, nil
+}
+
+func (d *DB) listOrderShipQuery(rq *pb.OrderShipRequest) *xorm.Session {
+	ss := d.engine.Table(tblOrderShip)
+	if rq.GetIds() != nil {
+		ss.In("id", rq.GetIds())
+	} else if rq.GetId() != "" {
+		ss.And("id = ?", rq.GetId())
+	}
+	if rq.GetOrderId() != "" {
+		ss.And("order_id = ?", rq.GetOrderId())
+	}
+	if rq.GetState() != "" {
+		ss.And("state = ?", rq.GetState())
+	}
+	if rq.GetProvince() != "" {
+		ss.And("province = ?", rq.GetProvince())
+	}
+	if rq.GetDistrict() != "" {
+		ss.And("district = ?", rq.GetDistrict())
+	}
+	if rq.GetWard() != "" {
+		ss.And("ward = ?", rq.GetWard())
+	}
+	return ss
+}
+
+func (d *DB) ListOrderShip(rq *pb.OrderShipRequest) ([]*pb.OrderShip, error) {
+	orderShips := make([]*pb.OrderShip, 0)
+	ss := d.listOrderShipQuery(rq)
+	if rq.GetLimit() > 0 {
+		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
+	}
+	if err := ss.Find(&orderShips); err != nil {
+		return nil, err
+	}
+	return orderShips, nil
+}
+
+func (d *DB) CountOrderShip(rq *pb.OrderShipRequest) (int64, error) {
+	return d.listOrderShipQuery(rq).Count()
 }

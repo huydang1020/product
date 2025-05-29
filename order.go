@@ -26,17 +26,15 @@ const (
 	REDIS_KEY_ORDER = "order_"
 	ACTIVE          = "active"
 	INACTIVE        = "inactive"
-	PENDING         = "pending"
 	COD             = "cod"
-	CONFIRMED       = "confirmed"
-	CANCELLED       = "cancelled"
 )
 
 func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, error) {
 	if req.GetUserId() == "" {
 		return nil, errors.New(utils.E_not_found_user_id)
 	}
-	if len(req.OrderDetail) < 1 {
+	log.Println("req:", req)
+	if len(req.ProductOrdered) < 1 {
 		log.Println("not found product order")
 		return nil, errors.New(utils.E_not_found_product)
 	}
@@ -51,7 +49,7 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 	}
 
 	var totalMoney float64
-	for _, ord := range req.OrderDetail {
+	for _, ord := range req.ProductOrdered {
 		log.Println("ord:", ord)
 		prod, err := p.Db.GetProduct(ord.ProductId)
 		if err != nil {
@@ -73,11 +71,11 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 	randNumber := rand.Intn(99999999999999-10000000000000) + 10000000000000
 	req.OrderCode = fmt.Sprint(randNumber)
 	req.TimeOrder = time.Now().Unix()
-	req.State = PENDING
+	req.State = pb.Order_pending.String()
 	req.TotalMoney = totalMoney
 	req.ShippingFee = 30000
 	history := map[string]int64{}
-	history[PENDING] = req.TimeOrder
+	history[pb.Order_pending.String()] = req.TimeOrder
 	byteHistory, err := json.Marshal(history)
 	if err != nil {
 		log.Println("marshal err:", err)
@@ -109,11 +107,6 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 		if err := p.Db.TransCreateOrder(req); err != nil {
 			log.Println("insert order err:", err)
 			return nil, errors.New(utils.E_internal_error)
-		}
-		_, err := p.DeleteCartItems(ctx, &pb.Cart{UserId: req.UserId, Item: req.OrderDetail})
-		if err != nil {
-			log.Println("delete cart err:", err)
-			// return nil, errors.New(utils.E_internal_error)
 		}
 		return &pb.Order{}, nil
 	} else if req.MethodPayment == "online" {
@@ -183,16 +176,11 @@ func (p *Product) CreateOrderVNpay(ctx context.Context, req *pb.Order) (*common.
 		log.Println("unmarshal err:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	order.State = CONFIRMED
+	order.State = pb.Order_completed.String()
 	if err := p.Db.TransCreateOrder(order); err != nil {
 		log.Println("trans insert order err:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	_, err = p.DeleteCartItems(ctx, &pb.Cart{UserId: req.UserId, Item: req.OrderDetail})
-		if err != nil {
-			log.Println("delete cart err:", err)
-			// return nil, errors.New(utils.E_internal_error)
-		}
 	if err := p.cache.Del(ctx, keyRedis); err != nil {
 		log.Println("del key redis err:", err)
 		// return nil, errors.New(utils.E_internal_error)
@@ -214,8 +202,8 @@ func (p *Product) ListOrder(ctx context.Context, req *pb.OrderRequest) (*pb.Orde
 		return &pb.Orders{}, nil
 	}
 	for _, order := range list {
-		if order.GetOrderDetail() != nil {
-			for _, item := range order.GetOrderDetail() {
+		if order.GetProductOrdered() != nil {
+			for _, item := range order.GetProductOrdered() {
 				prod, err := p.Db.GetProduct(item.GetProductId())
 				if err != nil {
 					log.Println("GetProduct error:", err)
@@ -243,8 +231,8 @@ func (p *Product) GetOrder(ctx context.Context, req *pb.OrderRequest) (*pb.Order
 		log.Println("GetOrder error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	if order.GetOrderDetail() != nil {
-		for _, item := range order.GetOrderDetail() {
+	if order.GetProductOrdered() != nil {
+		for _, item := range order.GetProductOrdered() {
 			prod, err := p.Db.GetProduct(item.GetProductId())
 			if err != nil {
 				log.Println("GetProduct error:", err)
@@ -265,10 +253,45 @@ func (p *Product) CancelOrder(ctx context.Context, req *pb.Order) (*common.Empty
 		log.Println("GetOrder error:", err)
 		return nil, errors.New(utils.E_not_found_order)
 	}
-	if order.State != PENDING {
+	if order.State != pb.Order_completed.String() {
 		return nil, errors.New(utils.E_invalid_state)
 	}
-	order.State = CANCELLED
+	order.State = pb.Order_canceled.String()
+	history := map[string]int64{}
+	history[pb.Order_canceled.String()] = req.TimeOrder
+	byteHistory, err := json.Marshal(history)
+	if err != nil {
+		log.Println("marshal err:", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	order.History = string(byteHistory)
+	if err := p.Db.UpdateOrder(order, &pb.Order{Id: req.Id}); err != nil {
+		log.Println("UpdateOrder error:", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	return &common.Empty{}, nil
+}
+
+func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.Empty, error) {
+	if req.GetId() == "" {
+		return nil, errors.New(utils.E_not_found_id)
+	}
+	order, err := p.Db.GetOrder(req.GetId())
+	if err != nil {
+		log.Println("GetOrder error:", err)
+		return nil, errors.New(utils.E_not_found_order)
+	}
+	if order.State != pb.Order_completed.String() || order.State != pb.Order_canceled.String() {
+		return nil, errors.New(utils.E_invalid_state)
+	}
+	history := map[string]int64{}
+	history[req.GetState()] = req.TimeOrder
+	byteHistory, err := json.Marshal(history)
+	if err != nil {
+		log.Println("marshal err:", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	order.History = string(byteHistory)
 	if err := p.Db.UpdateOrder(order, &pb.Order{Id: req.Id}); err != nil {
 		log.Println("UpdateOrder error:", err)
 		return nil, errors.New(utils.E_internal_error)
@@ -320,9 +343,9 @@ func (p *Product) AddToCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error)
 			log.Println("set cart redis err:", err)
 			return nil, errors.New(utils.E_internal_error)
 		}
-		resp := []*pb.OrderDetail{}
+		resp := []*pb.ProductOrdered{}
 		for prodId, quantity := range itemCart {
-			cartItem := &pb.OrderDetail{
+			cartItem := &pb.ProductOrdered{
 				ProductId: prodId,
 				Quantity:  quantity,
 			}
@@ -358,9 +381,9 @@ func (p *Product) AddToCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error)
 		log.Println("unmarshal err:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	resp := []*pb.OrderDetail{}
+	resp := []*pb.ProductOrdered{}
 	for prodId, quantity := range itemCart {
-		cartItem := &pb.OrderDetail{
+		cartItem := &pb.ProductOrdered{
 			ProductId: prodId,
 			Quantity:  quantity,
 		}
@@ -375,9 +398,6 @@ func (p *Product) AddToCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error)
 	return &pb.Cart{Item: resp, UserId: req.GetUserId()}, nil
 }
 
-func (p *Product) UpdateCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error) {
-	return nil, nil
-}
 func (p *Product) DeleteCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error) {
 	if req.GetUserId() == "" {
 		return nil, errors.New(utils.E_not_found_user_id)
@@ -389,6 +409,7 @@ func (p *Product) DeleteCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error
 	}
 	return &pb.Cart{}, nil
 }
+
 func (p *Product) ListCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error) {
 	log.Println("ListCart", req)
 	if req.GetUserId() == "" {
@@ -410,9 +431,12 @@ func (p *Product) ListCart(ctx context.Context, req *pb.Cart) (*pb.Cart, error) 
 		log.Println("unmarshal err:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	resp := []*pb.OrderDetail{}
+	resp := []*pb.ProductOrdered{}
 	for prodId, quantity := range itemCart {
-		cartItem := &pb.OrderDetail{
+		if len(req.ProductIds) > 0 && !utils.Include(req.GetProductIds(), prodId) {
+			continue
+		}
+		cartItem := &pb.ProductOrdered{
 			ProductId: prodId,
 			Quantity:  int32(quantity),
 		}

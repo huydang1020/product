@@ -29,6 +29,14 @@ func MakeOrderId() string {
 	return "ord" + xid.New().String()
 }
 
+func MakeOrderShipId() string {
+	return "osh" + xid.New().String()
+}
+
+func MakeOrderDetailId() string {
+	return "odt" + xid.New().String()
+}
+
 func ConvertUnixToDateTime(format string, t int64) (string, error) {
 	location, err := time.LoadLocation("Asia/Ho_Chi_Minh")
 	if err != nil {
@@ -52,4 +60,13 @@ func SortParams(params url.Values) url.Values {
 	}
 
 	return sortedParams
+}
+
+func Include(slice []string, item string) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
 }
