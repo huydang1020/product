@@ -663,6 +663,24 @@ func (d *DB) TransCreateOrder(order *pb.Order) error {
 		return errors.New(utils.E_not_found)
 	}
 
+	// create order details
+	for _, odt := range order.OrderDetails {
+		if _, err := sess.Insert(odt); err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_can_not_insert_order_detail)
+		}
+	}
+
+	// create order ships
+	for _, osh := range order.OrderShips {
+		if _, err := sess.Insert(osh); err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_can_not_insert_order_ship)
+		}
+	}
+
 	for _, orderItem := range order.GetProductOrdered() {
 		// Create order detail
 		pro, err := d.GetProduct(orderItem.GetProductId())
@@ -675,19 +693,6 @@ func (d *DB) TransCreateOrder(order *pb.Order) error {
 			log.Printf("Not enough quantity for product %s, available: %d, requested: %d", pro.GetId(), pro.GetQuantity(), orderItem.GetQuantity())
 			sess.Rollback()
 			return errors.New(utils.E_not_enough_quantity)
-		}
-		_, err = sess.Insert(&pb.OrderDetail{
-			Id:         utils.MakeOrderDetailId(),
-			OrderId:    order.GetId(),
-			ProductId:  orderItem.GetProductId(),
-			Quantity:   orderItem.GetQuantity(),
-			TotalPrice: pro.GetSellPrice() * int64(orderItem.GetQuantity()),
-			CreatedAt:  time.Now().Unix(),
-		})
-		if err != nil {
-			log.Print(err)
-			sess.Rollback()
-			return errors.New(utils.E_can_not_insert_order_detail)
 		}
 		if order.GetMethodPayment() == "online" {
 			// Update quantity sold.

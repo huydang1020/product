@@ -64,4 +64,5 @@ const (
 	E_invalid_receiver_phone        = "invalid_receiver_phone"
 	E_not_found_order_code          = "not_found_order_code"
 	E_not_enough_quantity           = "not_enough_quantity"
+	E_not_found_store_id            = "not_found_store_id"
 )
