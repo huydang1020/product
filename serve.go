@@ -76,6 +76,13 @@ type IDatabase interface {
 	ListOrderShip(rq *pb.OrderShipRequest) ([]*pb.OrderShip, error)
 	GetOrderShip(id string) (*pb.OrderShip, error)
 	CountOrderShip(rq *pb.OrderShipRequest) (int64, error)
+
+	CreateReview(review *pb.Review) error
+	UpdateReview(updator, selector *pb.Review) error
+	DeleteReview(review *pb.Review) error
+	ListReview(rq *pb.ReviewRequest) ([]*pb.Review, error)
+	GetReview(id string) (*pb.Review, error)
+	CountReview(rq *pb.ReviewRequest) (int64, error)
 }
 
 func NewRedisCache(addr, pw string, db int) *redis.Client {

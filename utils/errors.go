@@ -65,4 +65,13 @@ const (
 	E_not_found_order_code          = "not_found_order_code"
 	E_not_enough_quantity           = "not_enough_quantity"
 	E_not_found_store_id            = "not_found_store_id"
+	E_not_found_order_data          = "not_found_order_data"
+	E_can_not_insert_review         = "can_not_insert_review"
+	E_can_not_update_review         = "can_not_update_review"
+	E_can_not_delete_review         = "can_not_delete_review"
+	E_not_found_review_id           = "not_found_review_id"
+	E_not_found_review              = "not_found_review"
+	E_not_found_review_reply        = "not_found_review_reply"
+	E_invalid_rating                = "invalid_rating"
+	E_product_not_bought            = "product_not_bought"
 )

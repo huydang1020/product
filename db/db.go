@@ -953,3 +953,84 @@ func (d *DB) ListOrderShip(rq *pb.OrderShipRequest) ([]*pb.OrderShip, error) {
 func (d *DB) CountOrderShip(rq *pb.OrderShipRequest) (int64, error) {
 	return d.listOrderShipQuery(rq).Count()
 }
+
+func (d *DB) CreateReview(review *pb.Review) error {
+	c, err := d.engine.Insert(review)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_insert_review)
+	}
+	return nil
+}
+
+func (d *DB) UpdateReview(updator, selector *pb.Review) error {
+	c, err := d.engine.Update(updator, selector)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		log.Println("update review failed")
+		return nil
+	}
+	return nil
+}
+
+func (d *DB) DeleteReview(review *pb.Review) error {
+	c, err := d.engine.ID(review.Id).Delete(review)
+	if err != nil {
+		return err
+	}
+	if c == 0 {
+		return errors.New(utils.E_can_not_delete_review)
+	}
+	return nil
+}
+
+func (d *DB) GetReview(id string) (*pb.Review, error) {
+	review := &pb.Review{Id: id}
+	exist, err := d.engine.Get(review)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_review)
+	}
+	return review, nil
+}
+
+func (d *DB) listReviewQuery(rq *pb.ReviewRequest) *xorm.Session {
+	ss := d.engine.Table(tblReview)
+	if rq.GetIds() != nil {
+		ss.In("id", rq.GetIds())
+	} else if rq.GetId() != "" {
+		ss.And("id = ?", rq.GetId())
+	}
+	if rq.GetProductId() != "" {
+		ss.And("product_id = ?", rq.GetProductId())
+	}
+	if rq.GetUserId() != "" {
+		ss.And("user_id = ?", rq.GetUserId())
+	}
+	if rq.GetRating() != 0 {
+		ss.And("rating = ?", rq.GetRating())
+	}
+	return ss
+}
+
+func (d *DB) ListReview(rq *pb.ReviewRequest) ([]*pb.Review, error) {
+	reviews := make([]*pb.Review, 0)
+	ss := d.listReviewQuery(rq)
+	if rq.GetLimit() > 0 {
+		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
+	}
+	if err := ss.Find(&reviews); err != nil {
+		return nil, err
+	}
+	return reviews, nil
+}
+
+func (d *DB) CountReview(rq *pb.ReviewRequest) (int64, error) {
+	return d.listReviewQuery(rq).Count()
+}

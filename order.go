@@ -240,7 +240,10 @@ func (p *Product) CreateOrderVNpay(ctx context.Context, req *pb.Order) (*common.
 	}
 	keyRedis := REDIS_KEY_ORDER + req.OrderCode
 	result, err := p.cache.Get(ctx, keyRedis).Result()
-	if err != nil {
+	if err == redis.Nil {
+		log.Println("redis key does not exist:", keyRedis)
+		return nil, errors.New(utils.E_not_found_order_data)
+	} else if err != nil {
 		log.Println("get data redis error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
