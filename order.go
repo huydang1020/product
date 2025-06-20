@@ -71,34 +71,19 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 		return nil, errors.New(utils.E_internal_error)
 	}
 	req.History = string(byteHistory)
-	// if req.CodeId != "" {
-	// 	code, err := p.Db.GetCode(&pb.Code{Id: req.CodeId, UserId: req.UserId})
-	// 	if err != nil {
-	// 		log.Println("get code err:", err)
-	// 		ctx.JSON(200, &Response{Code: -1, Message: err.Error()})
-	// 		return
-	// 	}
-	// 	if code.State != GOT {
-	// 		ctx.JSON(200, &Response{Code: -1, Message: utils.INVALID_CODE_STATE})
-	// 		return
-	// 	}
-	// 	vou, err := r.db.GetVoucher(&pb.Voucher{Id: code.VoucherId})
-	// 	if err != nil {
-	// 		log.Println("get voucher err:", err)
-	// 		ctx.JSON(200, &Response{Code: -1, Message: err.Error()})
-	// 		return
-	// 	}
-	// 	discount := float64(vou.Discount) / float64(100)
-	// 	req.TotalMoney = req.TotalMoney - (req.TotalMoney * discount)
-	// }
+	if req.CodeId != "" && req.Voucher != nil {
+		discount := float64(req.Voucher.Discount) / float64(100)
+		req.TotalMoney = req.TotalMoney - (req.TotalMoney * discount)
+	}
 	req.TotalMoney = req.TotalMoney + float64(req.ShippingFee)
-	if req.MethodPayment == PAYMENT_COD {
+	switch req.MethodPayment {
+	case PAYMENT_COD:
 		if err := p.Db.TransCreateOrder(req); err != nil {
 			log.Println("insert order err:", err)
 			return nil, errors.New(utils.E_internal_error)
 		}
 		return &pb.Order{}, nil
-	} else if req.MethodPayment == PAYMENT_ONLINE {
+	case PAYMENT_ONLINE:
 		vnpUrl := os.Getenv("VNP_URL")
 		vnpSecret := os.Getenv("VNP_HASH_SECRET")
 		vnpTmnCode := os.Getenv("VNP_TMNCODE")

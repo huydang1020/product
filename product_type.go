@@ -127,13 +127,21 @@ func (p *Product) GetProductType(ctx context.Context, req *pb.ProductTypeRequest
 		log.Println("GetProductType error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	listPr, err := p.Db.ListProduct(&pb.ProductRequest{ProductTypeId: pty.Id})
+	listProduct, err := p.Db.ListProduct(&pb.ProductRequest{ProductTypeId: pty.Id})
 	if err != nil {
 		log.Println("ListProductType error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	pty.Products = listPr
-
+	pty.Products = listProduct
+	var ids []string
+	for _, pr := range listProduct {
+		ids = append(ids, pr.Id)
+	}
+	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductIds: ids})
+	if err != nil {
+		log.Println("list review err: ", err)
+	}
+	pty.Reviews = listReview
 	return pty, nil
 }
 
