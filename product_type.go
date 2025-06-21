@@ -29,6 +29,7 @@ func (p *Product) CreateProductType(ctx context.Context, req *pb.ProductType) (*
 	}
 	req.CreatedAt = time.Now().Unix()
 	req.Id = utils.MakeProductTypeId()
+	req.Slug = utils.ToSlug(req.GetName())
 	for _, pro := range req.GetProducts() {
 		if pro.GetName() == "" {
 			return nil, errors.New(utils.E_invalid_name)

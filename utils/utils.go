@@ -3,10 +3,14 @@ package utils
 import (
 	"log"
 	"net/url"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/rs/xid"
+	"golang.org/x/text/unicode/norm"
 )
 
 func MakeCategoryId() string {
@@ -69,4 +73,24 @@ func Include(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// Chuyển tiếng Việt có dấu sang không dấu và thành slug
+func ToSlug(input string) string {
+	// Bỏ dấu tiếng Việt
+	t := norm.NFD.String(input)
+	slug := strings.Builder{}
+	for _, r := range t {
+		if unicode.Is(unicode.Mn, r) {
+			continue
+		}
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			slug.WriteRune(unicode.ToLower(r))
+		} else {
+			slug.WriteRune(' ')
+		}
+	}
+	// Thay nhiều dấu cách thành một dấu "-"
+	re := regexp.MustCompile(`\s+`)
+	return re.ReplaceAllString(strings.TrimSpace(slug.String()), "-")
 }

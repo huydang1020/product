@@ -149,8 +149,8 @@ func (d *DB) DeleteProductType(id string) error {
 	return nil
 }
 
-func (d *DB) GetProductType(id string) (*pb.ProductType, error) {
-	productType := &pb.ProductType{Id: id}
+func (d *DB) GetProductType(key string) (*pb.ProductType, error) {
+	productType := &pb.ProductType{Slug: key}
 	exist, err := d.engine.Get(productType)
 	if err != nil {
 		return nil, err
@@ -190,6 +190,9 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	}
 	if rq.GetQuantitySearch() > 0 {
 		ss.And("quantity_search >= ?", rq.GetQuantitySearch())
+	}
+	if rq.GetSlug() != "" {
+		ss.And("slug = ?", rq.GetSlug())
 	}
 	return ss
 }

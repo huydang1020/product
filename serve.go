@@ -39,7 +39,7 @@ type IDatabase interface {
 	UpdateProductType(updator, selector *pb.ProductType) error
 	DeleteProductType(id string) error
 	ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, error)
-	GetProductType(id string) (*pb.ProductType, error)
+	GetProductType(key string) (*pb.ProductType, error)
 	CountProductType(rq *pb.ProductTypeRequest) (int64, error)
 
 	TransCreateProductType(pt *pb.ProductType) error
