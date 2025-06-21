@@ -315,34 +315,6 @@ func (p *Product) GetOrder(ctx context.Context, req *pb.OrderRequest) (*pb.Order
 	return order, nil
 }
 
-func (p *Product) CancelOrder(ctx context.Context, req *pb.Order) (*common.Empty, error) {
-	if req.GetId() == "" {
-		return nil, errors.New(utils.E_not_found_id)
-	}
-	order, err := p.Db.GetOrder(req.GetId())
-	if err != nil {
-		log.Println("GetOrder error:", err)
-		return nil, errors.New(utils.E_not_found_order)
-	}
-	if order.State != pb.Order_completed.String() {
-		return nil, errors.New(utils.E_invalid_state)
-	}
-	order.State = pb.Order_canceled.String()
-	history := map[string]int64{}
-	history[pb.Order_canceled.String()] = req.TimeOrder
-	byteHistory, err := json.Marshal(history)
-	if err != nil {
-		log.Println("marshal err:", err)
-		return nil, errors.New(utils.E_internal_error)
-	}
-	order.History = string(byteHistory)
-	if err := p.Db.UpdateOrder(order, &pb.Order{Id: req.Id}); err != nil {
-		log.Println("UpdateOrder error:", err)
-		return nil, errors.New(utils.E_internal_error)
-	}
-	return &common.Empty{}, nil
-}
-
 func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.Empty, error) {
 	log.Println("req", req)
 	if req.GetId() == "" {
@@ -353,8 +325,13 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 		log.Println("GetOrder error:", err)
 		return nil, errors.New(utils.E_not_found_order)
 	}
-	if order.State == pb.Order_completed.String() || order.State == pb.Order_canceled.String() {
+	if order.GetState() == pb.Order_completed.String() || order.GetState() == pb.Order_canceled.String() {
 		return nil, errors.New(utils.E_invalid_state)
+	}
+	if req.GetState() == pb.OrderShip_canceled.String() {
+		if order.GetState() == pb.Order_confirm.String() {
+			return nil, errors.New(utils.E_invalid_state)
+		}
 	}
 	history := map[string]int64{}
 	history[req.GetState()] = order.TimeOrder
