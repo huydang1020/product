@@ -1002,8 +1002,7 @@ func (d *DB) DeleteReview(review *pb.Review) error {
 	return nil
 }
 
-func (d *DB) GetReview(id string) (*pb.Review, error) {
-	review := &pb.Review{Id: id}
+func (d *DB) GetReview(review *pb.Review) (*pb.Review, error) {
 	exist, err := d.engine.Get(review)
 	if err != nil {
 		return nil, err
@@ -1012,6 +1011,14 @@ func (d *DB) GetReview(id string) (*pb.Review, error) {
 		return nil, errors.New(utils.E_not_found_review)
 	}
 	return review, nil
+}
+
+func (d *DB) IsReviewExist(review *pb.Review) bool {
+	any, err := d.engine.Exist(review)
+	if err != nil {
+		return false
+	}
+	return any
 }
 
 func (d *DB) listReviewQuery(rq *pb.ReviewRequest) *xorm.Session {

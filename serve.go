@@ -82,8 +82,9 @@ type IDatabase interface {
 	UpdateReview(updator, selector *pb.Review) error
 	DeleteReview(review *pb.Review) error
 	ListReview(rq *pb.ReviewRequest) ([]*pb.Review, error)
-	GetReview(id string) (*pb.Review, error)
+	GetReview(review *pb.Review) (*pb.Review, error)
 	CountReview(rq *pb.ReviewRequest) (int64, error)
+	IsReviewExist(review *pb.Review) bool
 }
 
 func NewRedisCache(addr, pw string, db int) *redis.Client {

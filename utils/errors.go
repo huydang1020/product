@@ -74,4 +74,7 @@ const (
 	E_not_found_review_reply        = "not_found_review_reply"
 	E_invalid_rating                = "invalid_rating"
 	E_product_not_bought            = "product_not_bought"
+	E_invalid_order                 = "invalid_order"
+	E_product_not_in_order          = "product_not_in_order"
+	E_review_already_exists         = "review_already_exists"
 )

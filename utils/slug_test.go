@@ -1,19 +1,40 @@
-package utils
+package utils_test
 
 import (
 	"log"
 	"testing"
+
+	"github.com/huyshop/header/product"
+	"github.com/huyshop/product/db"
+	"github.com/huyshop/product/utils"
 )
 
 func Test_slug(t *testing.T) {
 	key := "Xịt/lăn khử mùi Rexona 72H kháng khuẩn thể thao dành cho nam 135/45ml"
-	a := ToSlug(key)
+	a := utils.ToSlug(key)
 	log.Println("a: ", a)
 }
 
-// func Test_convertSlug(*testing.T) {
-// 	p := &Db{}
-// 	if err := d.ConnectDb("admin_exchange:36b1c9722055507ac63cba13aa85d3fa17a555904df0c234@tcp(52.221.218.37:3306)", "voucher"); err != nil {
-// 		log.Println(err)
-// 	}
-// }
+func Test_convertSlug(t *testing.T) {
+	p := &db.DB{}
+	if err := p.ConnectDb("root:123456@tcp(localhost:3306)", "product"); err != nil {
+		log.Println(err)
+		return
+	}
+	listPty, err := p.ListProductType(&product.ProductTypeRequest{OrderBy: "id"})
+	if err != nil {
+		log.Println("err", err)
+		return
+	}
+	for _, pty := range listPty {
+		if pty.Slug != "" {
+			continue
+		}
+		pty.Slug = utils.ToSlug(pty.Name)
+		if err := p.UpdateProductType(pty, &product.ProductType{Id: pty.Id}); err != nil {
+			log.Println("err: ", err)
+			return
+		}
+	}
+	log.Println("done")
+}
