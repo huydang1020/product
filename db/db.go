@@ -149,8 +149,20 @@ func (d *DB) DeleteProductType(id string) error {
 	return nil
 }
 
-func (d *DB) GetProductType(key string) (*pb.ProductType, error) {
-	productType := &pb.ProductType{Slug: key}
+func (d *DB) GetProductType(id string) (*pb.ProductType, error) {
+	productType := &pb.ProductType{Id: id}
+	exist, err := d.engine.Get(productType)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errors.New(utils.E_not_found_product_type)
+	}
+	return productType, nil
+}
+
+func (d *DB) GetProductTypeBySlug(id string) (*pb.ProductType, error) {
+	productType := &pb.ProductType{Id: id}
 	exist, err := d.engine.Get(productType)
 	if err != nil {
 		return nil, err
@@ -823,8 +835,7 @@ func (d *DB) DeleteOrderDetail(req *pb.OrderDetail) error {
 	return nil
 }
 
-func (d *DB) GetOrderDetail(id string) (*pb.OrderDetail, error) {
-	req := &pb.OrderDetail{Id: id}
+func (d *DB) GetOrderDetail(req *pb.OrderDetail) (*pb.OrderDetail, error) {
 	exist, err := d.engine.Get(req)
 	if err != nil {
 		return nil, err

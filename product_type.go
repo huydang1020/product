@@ -146,6 +146,33 @@ func (p *Product) GetProductType(ctx context.Context, req *pb.ProductTypeRequest
 	return pty, nil
 }
 
+func (p *Product) GetProductTypeBySlug(ctx context.Context, req *pb.ProductTypeRequest) (*pb.ProductType, error) {
+	if req.GetSlug() == "" {
+		return nil, errors.New(utils.E_not_found_id)
+	}
+	pty, err := p.Db.GetProductTypeBySlug(req.Id)
+	if err != nil {
+		log.Println("GetProductType error:", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	listProduct, err := p.Db.ListProduct(&pb.ProductRequest{ProductTypeId: pty.Id})
+	if err != nil {
+		log.Println("ListProductType error:", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	pty.Products = listProduct
+	var ids []string
+	for _, pr := range listProduct {
+		ids = append(ids, pr.Id)
+	}
+	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductIds: ids})
+	if err != nil {
+		log.Println("list review err: ", err)
+	}
+	pty.Reviews = listReview
+	return pty, nil
+}
+
 func (p *Product) DeleteProductType(ctx context.Context, req *pb.ProductType) (*common.Empty, error) {
 	if req.GetId() == "" {
 		return nil, errors.New(utils.E_not_found_id)
