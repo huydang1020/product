@@ -147,7 +147,7 @@ func (p *Product) GetProductType(ctx context.Context, req *pb.ProductTypeRequest
 }
 
 func (p *Product) GetProductTypeBySlug(ctx context.Context, req *pb.ProductTypeRequest) (*pb.ProductType, error) {
-	if req.GetSlug() == "" {
+	if req.GetId() == "" {
 		return nil, errors.New(utils.E_not_found_id)
 	}
 	pty, err := p.Db.GetProductTypeBySlug(req.Id)

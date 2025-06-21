@@ -161,8 +161,8 @@ func (d *DB) GetProductType(id string) (*pb.ProductType, error) {
 	return productType, nil
 }
 
-func (d *DB) GetProductTypeBySlug(id string) (*pb.ProductType, error) {
-	productType := &pb.ProductType{Id: id}
+func (d *DB) GetProductTypeBySlug(key string) (*pb.ProductType, error) {
+	productType := &pb.ProductType{Slug: key}
 	exist, err := d.engine.Get(productType)
 	if err != nil {
 		return nil, err

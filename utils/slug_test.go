@@ -10,7 +10,7 @@ import (
 )
 
 func Test_slug(t *testing.T) {
-	key := "Xịt/lăn khử mùi Rexona 72H kháng khuẩn thể thao dành cho nam 135/45ml"
+	key := "Nồi điện đa năng"
 	a := utils.ToSlug(key)
 	log.Println("a: ", a)
 }
@@ -27,9 +27,9 @@ func Test_convertSlug(t *testing.T) {
 		return
 	}
 	for _, pty := range listPty {
-		if pty.Slug != "" {
-			continue
-		}
+		// if pty.Slug != "" {
+		// 	continue
+		// }
 		pty.Slug = utils.ToSlug(pty.Name)
 		if err := p.UpdateProductType(pty, &product.ProductType{Id: pty.Id}); err != nil {
 			log.Println("err: ", err)

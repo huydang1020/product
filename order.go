@@ -543,6 +543,13 @@ func (p *Product) DeleteCartItem(ctx context.Context, req *pb.Cart) (*pb.Cart, e
 		return nil, errors.New(utils.E_internal_error)
 	}
 	delete(itemCart, proId)
+	if len(itemCart) == 0 {
+		if err := p.cache.Del(ctx, keyCartRedis).Err(); err != nil {
+			log.Println("delete redis key err:", err)
+			return nil, errors.New(utils.E_internal_error)
+		}
+		return &pb.Cart{Item: []*pb.ProductOrdered{}, UserId: req.GetUserId()}, nil
+	}
 	byteItem, err := json.Marshal(itemCart)
 	log.Println("item cart:", itemCart)
 	if err != nil {

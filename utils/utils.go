@@ -81,20 +81,24 @@ func Include(slice []string, item string) bool {
 
 // Chuyển tiếng Việt có dấu sang không dấu và thành slug
 func ToSlug(input string) string {
-	// Bỏ dấu tiếng Việt
+	// Normalize để tách dấu ra
 	t := norm.NFD.String(input)
 	slug := strings.Builder{}
 	for _, r := range t {
-		if unicode.Is(unicode.Mn, r) {
-			continue
-		}
-		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+		switch {
+		case unicode.Is(unicode.Mn, r):
+			continue // bỏ dấu
+		case r == 'đ':
+			slug.WriteRune('d')
+		case r == 'Đ':
+			slug.WriteRune('d')
+		case unicode.IsLetter(r) || unicode.IsNumber(r):
 			slug.WriteRune(unicode.ToLower(r))
-		} else {
+		default:
 			slug.WriteRune(' ')
 		}
 	}
-	// Thay nhiều dấu cách thành một dấu "-"
+	// Thay nhiều dấu cách thành dấu gạch ngang
 	re := regexp.MustCompile(`\s+`)
 	return re.ReplaceAllString(strings.TrimSpace(slug.String()), "-")
 }
