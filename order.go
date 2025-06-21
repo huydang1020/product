@@ -251,7 +251,7 @@ func (p *Product) CreateOrderVNpay(ctx context.Context, req *pb.Order) (*common.
 		log.Println("del key redis err:", err)
 		// return nil, errors.New(utils.E_internal_error)
 	}
-	_, err = p.DeleteCartItem(ctx, &pb.Cart{Item: order.ProductOrdered})
+	_, err = p.DeleteCartItem(ctx, &pb.Cart{Item: order.ProductOrdered, UserId: order.UserId})
 	if err != nil {
 		log.Println("err: ", err)
 	}
@@ -327,11 +327,6 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 	}
 	if order.GetState() == pb.Order_completed.String() || order.GetState() == pb.Order_canceled.String() {
 		return nil, errors.New(utils.E_invalid_state)
-	}
-	if req.GetState() == pb.OrderShip_canceled.String() {
-		if order.GetState() == pb.Order_confirm.String() {
-			return nil, errors.New(utils.E_invalid_state)
-		}
 	}
 	history := map[string]int64{}
 	history[req.GetState()] = order.TimeOrder
