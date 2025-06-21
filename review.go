@@ -86,9 +86,7 @@ func (p *Product) DeleteReview(ctx context.Context, req *pb.Review) (*common.Emp
 
 func (p *Product) ListReview(ctx context.Context, rq *pb.ReviewRequest) (*pb.Reviews, error) {
 	log.Println("ListReview", rq)
-	if rq.Limit > 100 {
-		rq.Limit = DEFAULT_LIMIT
-	}
+	log.Println("limit: ", len(rq.ProductIds))
 	reviews, err := p.Db.ListReview(rq)
 	if err != nil {
 		return nil, err

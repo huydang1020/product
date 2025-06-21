@@ -638,6 +638,11 @@ func (d *DB) listOrderQuery(rq *pb.OrderRequest) *xorm.Session {
 	} else if rq.GetId() != "" {
 		ss.And("id = ?", rq.GetId())
 	}
+	if rq.GetStoreIds() != nil {
+		ss.In("store_id", rq.GetStoreIds())
+	} else if rq.GetStoreId() != "" {
+		ss.And("store_id = ?", rq.GetStoreId())
+	}
 	if rq.GetUserId() != "" {
 		ss.And("user_id = ?", rq.GetUserId())
 	}
@@ -648,6 +653,7 @@ func (d *DB) listOrderQuery(rq *pb.OrderRequest) *xorm.Session {
 }
 
 func (d *DB) ListOrder(rq *pb.OrderRequest) ([]*pb.Order, error) {
+	log.Println("rq: ", rq)
 	orders := make([]*pb.Order, 0)
 	ss := d.listOrderQuery(rq)
 	if rq.GetLimit() > 0 {
@@ -1028,7 +1034,9 @@ func (d *DB) listReviewQuery(rq *pb.ReviewRequest) *xorm.Session {
 	} else if rq.GetId() != "" {
 		ss.And("id = ?", rq.GetId())
 	}
-	if rq.GetProductId() != "" {
+	if len(rq.GetProductIds()) > 0 {
+		ss.In("product_id", rq.GetProductId())
+	} else if rq.GetProductId() != "" {
 		ss.And("product_id = ?", rq.GetProductId())
 	}
 	if rq.GetUserId() != "" {

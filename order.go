@@ -48,7 +48,9 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 	if req.GetReceiverAddress() == "" {
 		return nil, errors.New(utils.E_invalid_receiver_address)
 	}
-
+	// if req.GetStoreId() == "" {
+	// 	return nil, errors.New(utils.E_invalid_store_id)
+	// }
 	req.Id = utils.MakeOrderId()
 	randNumber := rand.Intn(99999999999999-10000000000000) + 10000000000000
 	req.OrderCode = fmt.Sprint(randNumber)
@@ -238,6 +240,9 @@ func (p *Product) CreateOrderVNpay(ctx context.Context, req *pb.Order) (*common.
 		return nil, errors.New(utils.E_internal_error)
 	}
 	order.State = pb.Order_pending.String()
+	if order.MethodPayment == PAYMENT_ONLINE {
+		order.State = pb.Order_confirm.String()
+	}
 	if err := p.Db.TransCreateOrder(order); err != nil {
 		log.Println("trans insert order err:", err)
 		return nil, errors.New(utils.E_internal_error)
@@ -246,11 +251,16 @@ func (p *Product) CreateOrderVNpay(ctx context.Context, req *pb.Order) (*common.
 		log.Println("del key redis err:", err)
 		// return nil, errors.New(utils.E_internal_error)
 	}
+	_, err = p.DeleteCartItem(ctx, &pb.Cart{Item: order.ProductOrdered})
+	if err != nil {
+		log.Println("err: ", err)
+	}
 	return &common.Empty{}, nil
 }
 
 func (p *Product) ListOrder(ctx context.Context, req *pb.OrderRequest) (*pb.Orders, error) {
-	if req.GetLimit() < 1 {
+	log.Println("req: ", req)
+	if req.GetLimit() > 100 {
 		req.Limit = 10
 	}
 	list, err := p.Db.ListOrder(req)
@@ -334,6 +344,7 @@ func (p *Product) CancelOrder(ctx context.Context, req *pb.Order) (*common.Empty
 }
 
 func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.Empty, error) {
+	log.Println("req", req)
 	if req.GetId() == "" {
 		return nil, errors.New(utils.E_not_found_id)
 	}
@@ -342,18 +353,18 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 		log.Println("GetOrder error:", err)
 		return nil, errors.New(utils.E_not_found_order)
 	}
-	if order.State != pb.Order_completed.String() || order.State != pb.Order_canceled.String() {
+	if order.State == pb.Order_completed.String() || order.State == pb.Order_canceled.String() {
 		return nil, errors.New(utils.E_invalid_state)
 	}
 	history := map[string]int64{}
-	history[req.GetState()] = req.TimeOrder
+	history[req.GetState()] = order.TimeOrder
 	byteHistory, err := json.Marshal(history)
 	if err != nil {
 		log.Println("marshal err:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	order.History = string(byteHistory)
-	if err := p.Db.UpdateOrder(order, &pb.Order{Id: req.Id}); err != nil {
+	req.History = string(byteHistory)
+	if err := p.Db.UpdateOrder(req, &pb.Order{Id: req.Id}); err != nil {
 		log.Println("UpdateOrder error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
