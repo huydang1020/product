@@ -233,7 +233,7 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 		pt.*,
 		MIN(p.sell_price) AS min_price,
 		MAX(p.sell_price) AS max_price,
-		AVG(r.rating) AS average_rating,
+		COALESCE(AVG(DISTINCT r.rating), 0) AS average_rating,
 		COUNT(r.id) AS total_reviews
 	`
 	ss.Select(selectCols)
@@ -242,6 +242,7 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 }
 
 func (d *DB) ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, error) {
+	// d.engine.ShowSQL()
 	productTypes := make([]*pb.ProductType, 0)
 	ss := d.listProductTypeQuery(rq)
 
@@ -260,6 +261,8 @@ func (d *DB) ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, erro
 		ss.OrderBy("average_rating DESC")
 	case "sold":
 		ss.OrderBy("pt.quantity_sold DESC")
+	case "views":
+		ss.OrderBy("pt.views DESC")
 	default:
 		if rq.GetOrderBy() != "" {
 			ss.OrderBy(rq.GetOrderBy()) // fallback nếu custom

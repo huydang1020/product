@@ -77,4 +77,5 @@ const (
 	E_invalid_order                 = "invalid_order"
 	E_product_not_in_order          = "product_not_in_order"
 	E_review_already_exists         = "review_already_exists"
+	E_invalid_state_order           = "invalid_state_order"
 )

@@ -35,6 +35,15 @@ func (p *Product) CreateReview(ctx context.Context, review *pb.Review) (*common.
 	if ord == nil || ord.UserId != review.UserId {
 		return nil, errors.New(utils.E_invalid_order)
 	}
+	if ord.State != pb.Order_completed.String() {
+		return nil, errors.New(utils.E_invalid_state_order)
+	}
+	pro, err := p.Db.GetProduct(review.ProductId)
+	if err != nil {
+		log.Println("err ", err)
+		return nil, errors.New(utils.E_not_found_product)
+	}
+	review.ProductTypeId = pro.ProductTypeId
 
 	// Kiểm tra sản phẩm có nằm trong đơn hàng không
 	found := false
@@ -47,7 +56,6 @@ func (p *Product) CreateReview(ctx context.Context, review *pb.Review) (*common.
 	if !found {
 		return nil, errors.New(utils.E_product_not_in_order)
 	}
-
 	// Kiểm tra rating hợp lệ
 	if review.Rating < 1 || review.Rating > 5 {
 		return nil, errors.New(utils.E_invalid_rating)
@@ -84,9 +92,23 @@ func (p *Product) DeleteReview(ctx context.Context, req *pb.Review) (*common.Emp
 	return &common.Empty{}, nil
 }
 
+func (p *Product) CaculateAvgrating(reviews []*pb.Review) float32 {
+	var totalRating int32
+	for _, ra := range reviews {
+		totalRating += ra.Rating
+	}
+
+	var avgRating float32
+	if len(reviews) > 0 {
+		avgRating = float32(totalRating) / float32(len(reviews))
+	}
+
+	return avgRating
+
+}
+
 func (p *Product) ListReview(ctx context.Context, rq *pb.ReviewRequest) (*pb.Reviews, error) {
 	log.Println("ListReview", rq)
-	log.Println("limit: ", len(rq.ProductIds))
 	reviews, err := p.Db.ListReview(rq)
 	if err != nil {
 		return nil, err
