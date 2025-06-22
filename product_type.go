@@ -11,6 +11,11 @@ import (
 	"github.com/huyshop/product/utils"
 )
 
+const (
+	DESC = "desc"
+	ASC  = "asc"
+)
+
 func (p *Product) CreateProductType(ctx context.Context, req *pb.ProductType) (*common.Empty, error) {
 	if req.GetName() == "" {
 		return nil, errors.New(utils.E_invalid_name)
@@ -85,7 +90,7 @@ func (p *Product) UpdateStateProductType(ctx context.Context, req *pb.ProductTyp
 func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeRequest) (*pb.ProductTypes, error) {
 	log.Println("ListProductType req", req)
 	if req.GetOrderBy() == "" {
-		req.OrderBy = "created_at"
+		req.OrderBy = "created_at DESC"
 	}
 	productTypes, err := p.Db.ListProductType(req)
 	if err != nil {

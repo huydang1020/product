@@ -56,7 +56,10 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 	req.OrderCode = fmt.Sprint(randNumber)
 	req.TimeOrder = time.Now().Unix()
 	req.State = pb.Order_pending.String()
-	req.ShippingFee = 30000
+	if req.ShippingFee == 0 {
+		req.ShippingFee = 30000
+	}
+	req.CancelOrder = "fasle"
 	odts, osh, totalMoney, err := p.GenerateOrderDetailsAndShips(req)
 	if err != nil {
 		log.Println("CreateOrderDetail error:", err)
@@ -328,14 +331,16 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 	if order.GetState() == pb.Order_completed.String() || order.GetState() == pb.Order_canceled.String() {
 		return nil, errors.New(utils.E_invalid_state)
 	}
-	history := map[string]int64{}
-	history[req.GetState()] = order.TimeOrder
-	byteHistory, err := json.Marshal(history)
-	if err != nil {
-		log.Println("marshal err:", err)
-		return nil, errors.New(utils.E_internal_error)
+	if req.State != "" {
+		history := map[string]int64{}
+		history[req.GetState()] = time.Now().Unix()
+		byteHistory, err := json.Marshal(history)
+		if err != nil {
+			log.Println("marshal err:", err)
+			return nil, errors.New(utils.E_internal_error)
+		}
+		req.History = string(byteHistory)
 	}
-	req.History = string(byteHistory)
 	if err := p.Db.UpdateOrder(req, &pb.Order{Id: req.Id}); err != nil {
 		log.Println("UpdateOrder error:", err)
 		return nil, errors.New(utils.E_internal_error)

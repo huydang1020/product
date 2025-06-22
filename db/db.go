@@ -174,6 +174,106 @@ func (d *DB) GetProductTypeBySlug(key string) (*pb.ProductType, error) {
 }
 
 func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
+	ss := d.engine.Table(tblProductType).Alias("pt").
+		Join("INNER", []string{tblProduct, "p"}, "pt.id = p.product_type_id").
+		Join("LEFT", []string{"review", "r"}, "r.product_id = p.id")
+
+	// --- Điều kiện lọc trên product_type ---
+	if rq.GetIds() != nil {
+		ss.In("pt.id", rq.GetIds())
+	} else if rq.GetId() != "" {
+		ss.And("pt.id = ?", rq.GetId())
+	}
+	if rq.GetName() != "" {
+		ss.And("pt.name LIKE ?", "%"+rq.GetName()+"%")
+	}
+	if rq.GetCategoryId() != "" {
+		ss.And("pt.category_id = ?", rq.GetCategoryId())
+	}
+	if rq.GetState() != "" {
+		ss.And("pt.state = ?", rq.GetState())
+	}
+	if len(rq.GetPartnerIds()) > 0 {
+		ss.In("pt.partner_id", rq.GetPartnerIds())
+	} else if rq.GetPartnerId() != "" {
+		ss.And("pt.partner_id = ?", rq.GetPartnerId())
+	}
+	if rq.GetStoreId() != "" {
+		ss.And("pt.store_id = ?", rq.GetStoreId())
+	}
+	if rq.GetQuantitySold() > 0 {
+		ss.And("pt.quantity_sold >= ?", rq.GetQuantitySold())
+	}
+	if rq.GetViews() > 0 {
+		ss.And("pt.quantity_search >= ?", rq.GetViews())
+	}
+	if rq.GetSlug() != "" {
+		ss.And("pt.slug = ?", rq.GetSlug())
+	}
+
+	// --- Điều kiện lọc theo khoảng giá ---
+	if rq.GetPriceFrom() > 0 {
+		ss.And("p.sell_price >= ?", rq.GetPriceFrom())
+	}
+	if rq.GetPriceTo() > 0 {
+		ss.And("p.sell_price <= ?", rq.GetPriceTo())
+	}
+
+	// --- Nhóm theo product_type ---
+	ss.GroupBy("pt.id")
+
+	// --- Lọc theo điểm đánh giá (HAVING) ---
+	if rq.GetRatingFrom() > 0 {
+		ss.Having(fmt.Sprintf("AVG(r.rating) >= %.2f", rq.GetRatingFrom()))
+
+	}
+
+	// --- Chọn các trường cần thiết ---
+	selectCols := `
+		pt.*,
+		MIN(p.sell_price) AS min_price,
+		MAX(p.sell_price) AS max_price,
+		AVG(r.rating) AS average_rating,
+		COUNT(r.id) AS total_reviews
+	`
+	ss.Select(selectCols)
+
+	return ss
+}
+
+func (d *DB) ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, error) {
+	productTypes := make([]*pb.ProductType, 0)
+	ss := d.listProductTypeQuery(rq)
+
+	// Phân trang
+	if rq.GetLimit() > 0 {
+		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
+	}
+
+	// Sắp xếp
+	switch rq.GetOrderBy() {
+	case "price_asc":
+		ss.OrderBy("min_price ASC")
+	case "price_desc":
+		ss.OrderBy("max_price DESC")
+	case "rating":
+		ss.OrderBy("average_rating DESC")
+	case "sold":
+		ss.OrderBy("pt.quantity_sold DESC")
+	default:
+		if rq.GetOrderBy() != "" {
+			ss.OrderBy(rq.GetOrderBy()) // fallback nếu custom
+		}
+	}
+
+	// Thực thi
+	if err := ss.Find(&productTypes); err != nil {
+		return nil, err
+	}
+	return productTypes, nil
+}
+
+func (d *DB) listProductTypeQueryOld(rq *pb.ProductTypeRequest) *xorm.Session {
 	ss := d.engine.Table(tblProductType)
 	if rq.GetIds() != nil {
 		ss.In("id", rq.GetIds())
@@ -200,8 +300,8 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	if rq.GetQuantitySold() > 0 {
 		ss.And("quantity_sold >= ?", rq.GetQuantitySold())
 	}
-	if rq.GetQuantitySearch() > 0 {
-		ss.And("quantity_search >= ?", rq.GetQuantitySearch())
+	if rq.GetViews() > 0 {
+		ss.And("quantity_search >= ?", rq.GetViews())
 	}
 	if rq.GetSlug() != "" {
 		ss.And("slug = ?", rq.GetSlug())
@@ -209,20 +309,8 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	return ss
 }
 
-func (d *DB) ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, error) {
-	productTypes := make([]*pb.ProductType, 0)
-	ss := d.listProductTypeQuery(rq)
-	if rq.GetLimit() > 0 {
-		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
-	}
-	if err := ss.Desc(rq.GetOrderBy()).Find(&productTypes); err != nil {
-		return nil, err
-	}
-	return productTypes, nil
-}
-
 func (d *DB) CountProductType(rq *pb.ProductTypeRequest) (int64, error) {
-	return d.listProductTypeQuery(rq).Count()
+	return d.listProductTypeQueryOld(rq).Count()
 }
 
 func (d *DB) CreateProduct(product *pb.Product) error {
@@ -598,6 +686,7 @@ func (d *DB) CreateOrder(order *pb.Order) error {
 	}
 	return nil
 }
+
 func (d *DB) UpdateOrder(updator, selector *pb.Order) error {
 	c, err := d.engine.Update(updator, selector)
 	if err != nil {
@@ -605,10 +694,10 @@ func (d *DB) UpdateOrder(updator, selector *pb.Order) error {
 	}
 	if c == 0 {
 		log.Println("update order failed")
-		return nil
 	}
 	return nil
 }
+
 func (d *DB) DeleteOrder(order *pb.Order) error {
 	c, err := d.engine.ID(order.Id).Delete(order)
 	if err != nil {
@@ -649,6 +738,9 @@ func (d *DB) listOrderQuery(rq *pb.OrderRequest) *xorm.Session {
 	if rq.GetState() != "" {
 		ss.And("state = ?", rq.GetState())
 	}
+	if rq.GetPartnerId() != "" {
+		ss.And("partner_id = ?", rq.GetPartnerId())
+	}
 	return ss
 }
 
@@ -659,7 +751,7 @@ func (d *DB) ListOrder(rq *pb.OrderRequest) ([]*pb.Order, error) {
 	if rq.GetLimit() > 0 {
 		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
 	}
-	if err := ss.Find(&orders); err != nil {
+	if err := ss.Desc("id").Find(&orders); err != nil {
 		return nil, err
 	}
 	return orders, nil
@@ -877,7 +969,7 @@ func (d *DB) ListOrderDetail(rq *pb.OrderDetailRequest) ([]*pb.OrderDetail, erro
 	if rq.GetLimit() > 0 {
 		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
 	}
-	if err := ss.Find(&orderDetails); err != nil {
+	if err := ss.Desc("id").Find(&orderDetails); err != nil {
 		return nil, err
 	}
 	return orderDetails, nil
@@ -964,7 +1056,7 @@ func (d *DB) ListOrderShip(rq *pb.OrderShipRequest) ([]*pb.OrderShip, error) {
 	if rq.GetLimit() > 0 {
 		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
 	}
-	if err := ss.Find(&orderShips); err != nil {
+	if err := ss.Desc("id").Find(&orderShips); err != nil {
 		return nil, err
 	}
 	return orderShips, nil
@@ -1039,6 +1131,11 @@ func (d *DB) listReviewQuery(rq *pb.ReviewRequest) *xorm.Session {
 	} else if rq.GetProductId() != "" {
 		ss.And("product_id = ?", rq.GetProductId())
 	}
+	if len(rq.GetOrderIds()) > 0 {
+		ss.In("order_id", rq.GetOrderIds())
+	} else if rq.GetOrderId() != "" {
+		ss.And("order_id = ?", rq.GetOrderId())
+	}
 	if rq.GetUserId() != "" {
 		ss.And("user_id = ?", rq.GetUserId())
 	}
@@ -1054,7 +1151,7 @@ func (d *DB) ListReview(rq *pb.ReviewRequest) ([]*pb.Review, error) {
 	if rq.GetLimit() > 0 {
 		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
 	}
-	if err := ss.Find(&reviews); err != nil {
+	if err := ss.Desc("id").Find(&reviews); err != nil {
 		return nil, err
 	}
 	return reviews, nil
