@@ -56,7 +56,6 @@ func (d *DB) UpdateCategory(updator, selector *pb.Category) error {
 	}
 	if c == 0 {
 		log.Println("update category failed")
-		return nil
 	}
 	return nil
 }
@@ -95,6 +94,9 @@ func (d *DB) listCategoryQuery(rq *pb.CategoryRequest) *xorm.Session {
 	if rq.GetState() != "" {
 		ss.And("state = ?", rq.GetState())
 	}
+	if rq.GetSlug() != "" {
+		ss.And("slug = ?", rq.GetSlug())
+	}
 	return ss
 }
 
@@ -132,7 +134,6 @@ func (d *DB) UpdateProductType(updator, selector *pb.ProductType) error {
 	}
 	if c == 0 {
 		log.Println("update product type failed")
-		return nil
 	}
 	return nil
 }
@@ -175,8 +176,7 @@ func (d *DB) GetProductTypeBySlug(key string) (*pb.ProductType, error) {
 
 func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	ss := d.engine.Table(tblProductType).Alias("pt").
-		Join("INNER", []string{tblProduct, "p"}, "pt.id = p.product_type_id").
-		Join("LEFT", []string{"review", "r"}, "r.product_id = p.id")
+		Join("LEFT", []string{tblProduct, "p"}, "pt.id = p.product_type_id")
 
 	// --- Điều kiện lọc trên product_type ---
 	if rq.GetIds() != nil {
@@ -210,7 +210,6 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	if rq.GetSlug() != "" {
 		ss.And("pt.slug = ?", rq.GetSlug())
 	}
-
 	// --- Điều kiện lọc theo khoảng giá ---
 	if rq.GetPriceFrom() > 0 {
 		ss.And("p.sell_price >= ?", rq.GetPriceFrom())
@@ -222,19 +221,11 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	// --- Nhóm theo product_type ---
 	ss.GroupBy("pt.id")
 
-	// --- Lọc theo điểm đánh giá (HAVING) ---
-	if rq.GetRatingFrom() > 0 {
-		ss.Having(fmt.Sprintf("AVG(r.rating) >= %.2f", rq.GetRatingFrom()))
-
-	}
-
 	// --- Chọn các trường cần thiết ---
 	selectCols := `
 		pt.*,
 		MIN(p.sell_price) AS min_price,
-		MAX(p.sell_price) AS max_price,
-		COALESCE(AVG(DISTINCT r.rating), 0) AS average_rating,
-		COUNT(r.id) AS total_reviews
+		MAX(p.sell_price) AS max_price
 	`
 	ss.Select(selectCols)
 
@@ -258,15 +249,15 @@ func (d *DB) ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, erro
 	case "price_desc":
 		ss.OrderBy("max_price DESC")
 	case "rating":
-		ss.OrderBy("average_rating DESC")
+		ss.OrderBy("pt.average_rating DESC")
+	case "total_reviews":
+		ss.OrderBy("pt.total_reviews DESC")
 	case "sold":
 		ss.OrderBy("pt.quantity_sold DESC")
 	case "views":
 		ss.OrderBy("pt.views DESC")
 	default:
-		if rq.GetOrderBy() != "" {
-			ss.OrderBy(rq.GetOrderBy()) // fallback nếu custom
-		}
+		ss.OrderBy("created_at DESC")
 	}
 
 	// Thực thi
@@ -1016,16 +1007,15 @@ func (d *DB) DeleteOrderShip(orderShip *pb.OrderShip) error {
 	return nil
 }
 
-func (d *DB) GetOrderShip(id string) (*pb.OrderShip, error) {
-	orderShip := &pb.OrderShip{Id: id}
-	exist, err := d.engine.Get(orderShip)
+func (d *DB) GetOrderShip(re *pb.OrderShip) (*pb.OrderShip, error) {
+	exist, err := d.engine.Get(re)
 	if err != nil {
 		return nil, err
 	}
 	if !exist {
 		return nil, errors.New(utils.E_not_found_order_ship)
 	}
-	return orderShip, nil
+	return re, nil
 }
 
 func (d *DB) listOrderShipQuery(rq *pb.OrderShipRequest) *xorm.Session {
@@ -1145,6 +1135,9 @@ func (d *DB) listReviewQuery(rq *pb.ReviewRequest) *xorm.Session {
 	if rq.GetRating() != 0 {
 		ss.And("rating = ?", rq.GetRating())
 	}
+	if rq.GetProductTypeId() != "" {
+		ss.And("product_type_id = ?", rq.GetProductTypeId())
+	}
 	return ss
 }
 
@@ -1154,7 +1147,12 @@ func (d *DB) ListReview(rq *pb.ReviewRequest) ([]*pb.Review, error) {
 	if rq.GetLimit() > 0 {
 		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
 	}
-	if err := ss.Desc("id").Find(&reviews); err != nil {
+	if rq.GetOrderBy() != "" {
+		ss.OrderBy(rq.GetOrderBy())
+	} else {
+		ss.Desc("id")
+	}
+	if err := ss.Find(&reviews); err != nil {
 		return nil, err
 	}
 	return reviews, nil

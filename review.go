@@ -65,9 +65,22 @@ func (p *Product) CreateReview(ctx context.Context, review *pb.Review) (*common.
 	review.Id = utils.MakeReviewId()
 	review.CreatedAt = time.Now().Unix()
 	if err := p.Db.CreateReview(review); err != nil {
-		return nil, err
+		log.Println("err: ", err)
+		return nil, errors.New(utils.E_internal_error)
 	}
-
+	// update thông tin product
+	pty := &pb.ProductType{}
+	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductTypeId: pro.ProductTypeId})
+	if err != nil {
+		log.Println("list review err: ", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	pty.TotalReviews = int32(len(listReview))
+	rate := p.CaculateAvgrating(listReview)
+	pty.AverageRating = rate
+	if err = p.Db.UpdateProductType(pty, &pb.ProductType{Id: pro.ProductTypeId}); err != nil {
+		log.Println("update review by productType err: ", err)
+	}
 	return &common.Empty{}, nil
 }
 

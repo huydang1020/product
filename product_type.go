@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"sort"
 	"time"
 
 	"github.com/huyshop/header/common"
@@ -90,8 +89,21 @@ func (p *Product) UpdateStateProductType(ctx context.Context, req *pb.ProductTyp
 }
 func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeRequest) (*pb.ProductTypes, error) {
 	log.Println("ListProductType req", req)
-	if req.GetOrderBy() == "" {
-		req.OrderBy = "created_at DESC"
+	listCate, err := p.Db.ListCategory(&pb.CategoryRequest{Id: req.CategoryId, Slug: req.Category})
+	if err != nil {
+		log.Println("err: ", err)
+		return nil, err
+	}
+	mapCate := make(map[string]*pb.Category)
+	for _, c := range listCate {
+		mapCate[c.Id] = c
+	}
+	if req.Category != "" {
+		if len(listCate) > 0 {
+			req.CategoryId = listCate[0].Id
+		} else {
+			req.CategoryId = "not_category"
+		}
 	}
 	productTypes, err := p.Db.ListProductType(req)
 	if err != nil {
@@ -110,12 +122,7 @@ func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeReques
 		if len(listPr) > 0 {
 			pty.Products = listPr
 		}
-		cate, err := p.Db.GetCategory(pty.GetCategoryId())
-		if err != nil {
-			log.Println("GetCategory error:", err)
-			continue
-		}
-		pty.Category = cate
+		pty.Category = mapCate[pty.GetCategoryId()]
 		listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductTypeId: pty.Id})
 		if err != nil {
 			log.Println("list review err: ", err)
@@ -123,21 +130,6 @@ func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeReques
 		pty.TotalReviews = int32(len(listReview))
 		rate := p.CaculateAvgrating(listReview)
 		pty.AverageRating = rate
-	}
-	if req.OrderBy == "average_rating" {
-		sort.Slice(productTypes, func(i, j int) bool {
-			return productTypes[i].AverageRating > productTypes[j].AverageRating
-		})
-	}
-	if req.OrderBy == "total_review" {
-		sort.Slice(productTypes, func(i, j int) bool {
-			return productTypes[i].AverageRating > productTypes[j].AverageRating
-		})
-	}
-	if req.OrderBy == "total_review" {
-		sort.Slice(productTypes, func(i, j int) bool {
-			return productTypes[i].TotalReviews > productTypes[j].TotalReviews
-		})
 	}
 	count, err := p.Db.CountProductType(req)
 	if err != nil {
@@ -162,15 +154,13 @@ func (p *Product) GetProductType(ctx context.Context, req *pb.ProductTypeRequest
 		return nil, errors.New(utils.E_internal_error)
 	}
 	pty.Products = listProduct
-	var ids []string
-	for _, pr := range listProduct {
-		ids = append(ids, pr.Id)
-	}
-	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductIds: ids})
+	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductTypeId: pty.Id})
 	if err != nil {
 		log.Println("list review err: ", err)
+		return nil, errors.New(utils.E_internal_error)
 	}
 	pty.Reviews = listReview
+	pty.TotalReviews = int32(len(listReview))
 	rate := p.CaculateAvgrating(listReview)
 	pty.AverageRating = rate
 	return pty, nil
@@ -191,15 +181,15 @@ func (p *Product) GetProductTypeBySlug(ctx context.Context, req *pb.ProductTypeR
 		return nil, errors.New(utils.E_internal_error)
 	}
 	pty.Products = listProduct
-	var ids []string
-	for _, pr := range listProduct {
-		ids = append(ids, pr.Id)
-	}
-	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductIds: ids})
+	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductTypeId: pty.Id})
 	if err != nil {
 		log.Println("list review err: ", err)
+		return nil, errors.New(utils.E_internal_error)
 	}
 	pty.Reviews = listReview
+	pty.TotalReviews = int32(len(listReview))
+	rate := p.CaculateAvgrating(listReview)
+	pty.AverageRating = rate
 	return pty, nil
 }
 

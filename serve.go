@@ -39,9 +39,9 @@ type IDatabase interface {
 	UpdateProductType(updator, selector *pb.ProductType) error
 	DeleteProductType(id string) error
 	ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, error)
-	GetProductType(key string) (*pb.ProductType, error)
+	GetProductType(id string) (*pb.ProductType, error)
 	CountProductType(rq *pb.ProductTypeRequest) (int64, error)
-	GetProductTypeBySlug(id string) (*pb.ProductType, error)
+	GetProductTypeBySlug(key string) (*pb.ProductType, error)
 
 	TransCreateProductType(pt *pb.ProductType) error
 	TransUpdateStateProductType(pt *pb.ProductType) error
@@ -75,7 +75,7 @@ type IDatabase interface {
 	UpdateOrderShip(updator, selector *pb.OrderShip) error
 	DeleteOrderShip(orderShip *pb.OrderShip) error
 	ListOrderShip(rq *pb.OrderShipRequest) ([]*pb.OrderShip, error)
-	GetOrderShip(id string) (*pb.OrderShip, error)
+	GetOrderShip(re *pb.OrderShip) (*pb.OrderShip, error)
 	CountOrderShip(rq *pb.OrderShipRequest) (int64, error)
 
 	CreateReview(review *pb.Review) error

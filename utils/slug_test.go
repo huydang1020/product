@@ -21,20 +21,33 @@ func Test_convertSlug(t *testing.T) {
 		log.Println(err)
 		return
 	}
-	listPty, err := p.ListProductType(&product.ProductTypeRequest{OrderBy: "id"})
+	// listPty, err := p.ListProductType(&product.ProductTypeRequest{OrderBy: "id"})
+	// if err != nil {
+	// 	log.Println("err", err)
+	// 	return
+	// }
+	// for _, pty := range listPty {
+	// 	// if pty.Slug != "" {
+	// 	// 	continue
+	// 	// }
+	// 	pty.Slug = utils.ToSlug(pty.Name)
+	// 	if err := p.UpdateProductType(pty, &product.ProductType{Id: pty.Id}); err != nil {
+	// 		log.Println("err: ", err)
+	// 		return
+	// 	}
+	// }
+	listCate, err := p.ListCategory(&product.CategoryRequest{})
 	if err != nil {
-		log.Println("err", err)
+		log.Println("err: ", err)
 		return
 	}
-	for _, pty := range listPty {
-		// if pty.Slug != "" {
-		// 	continue
-		// }
-		pty.Slug = utils.ToSlug(pty.Name)
-		if err := p.UpdateProductType(pty, &product.ProductType{Id: pty.Id}); err != nil {
-			log.Println("err: ", err)
+	for _, c := range listCate {
+		c.Slug = utils.ToSlug(c.GetName())
+		if err = p.UpdateCategory(c, &product.Category{Id: c.GetId()}); err != nil {
+			log.Println("err: ", err, c.Id)
 			return
 		}
+
 	}
 	log.Println("done")
 }
