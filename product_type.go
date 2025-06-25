@@ -55,7 +55,7 @@ func (p *Product) CreateProductType(ctx context.Context, req *pb.ProductType) (*
 	return &common.Empty{}, nil
 }
 
-func (p *Product) UpdateProductType(ctx context.Context, req *pb.ProductType) (*common.Empty, error) {
+func (p *Product) UpdateProductTypeAdmin(ctx context.Context, req *pb.ProductType) (*common.Empty, error) {
 	log.Println("UpdateProductType", req)
 	if req.GetId() == "" {
 		return nil, errors.New(utils.E_not_found_id)
@@ -70,6 +70,19 @@ func (p *Product) UpdateProductType(ctx context.Context, req *pb.ProductType) (*
 	if err := p.Db.TransUpdateProductType(req); err != nil {
 		log.Println("UpdateProductType error:", err)
 		return nil, errors.New(utils.E_can_not_update_product_type)
+	}
+	return &common.Empty{}, nil
+}
+
+func (p *Product) UpdateProductType(ctx context.Context, req *pb.ProductType) (*common.Empty, error) {
+	log.Println("UpdateProductType", req)
+	if req.GetId() == "" {
+		return nil, errors.New(utils.E_not_found_id)
+	}
+	req.UpdatedAt = time.Now().Unix()
+	if err := p.Db.UpdateProductType(req, &pb.ProductType{Id: req.Id}); err != nil {
+		log.Println("err: ", err)
+		return nil, errors.New(utils.E_can_not_update)
 	}
 	return &common.Empty{}, nil
 }
@@ -119,9 +132,12 @@ func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeReques
 			log.Println("ListProductType error:", err)
 			return nil, errors.New(utils.E_internal_error)
 		}
-		if len(listPr) > 0 {
-			pty.Products = listPr
+		if len(listPr) == 0 {
+			log.Println("err list product nil:", pty.Id)
+			continue
 		}
+		pty.Products = listPr
+
 		pty.Category = mapCate[pty.GetCategoryId()]
 	}
 	count, err := p.Db.CountProductType(req)
