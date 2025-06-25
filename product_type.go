@@ -123,13 +123,6 @@ func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeReques
 			pty.Products = listPr
 		}
 		pty.Category = mapCate[pty.GetCategoryId()]
-		listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductTypeId: pty.Id})
-		if err != nil {
-			log.Println("list review err: ", err)
-		}
-		pty.TotalReviews = int32(len(listReview))
-		rate := p.CaculateAvgrating(listReview)
-		pty.AverageRating = rate
 	}
 	count, err := p.Db.CountProductType(req)
 	if err != nil {
@@ -180,16 +173,13 @@ func (p *Product) GetProductTypeBySlug(ctx context.Context, req *pb.ProductTypeR
 		log.Println("ListProductType error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	pty.Products = listProduct
-	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductTypeId: pty.Id})
+	cate, err := p.Db.GetCategory(pty.CategoryId)
 	if err != nil {
-		log.Println("list review err: ", err)
+		log.Println("error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	pty.Reviews = listReview
-	pty.TotalReviews = int32(len(listReview))
-	rate := p.CaculateAvgrating(listReview)
-	pty.AverageRating = rate
+	pty.Category = cate
+	pty.Products = listProduct
 	return pty, nil
 }
 

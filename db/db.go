@@ -95,7 +95,7 @@ func (d *DB) listCategoryQuery(rq *pb.CategoryRequest) *xorm.Session {
 		ss.And("state = ?", rq.GetState())
 	}
 	if rq.GetSlug() != "" {
-		ss.And("slug = ?", rq.GetSlug())
+		ss.And("slug LIKE ?", "%"+rq.GetSlug()+"%")
 	}
 	return ss
 }
@@ -208,7 +208,7 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 		ss.And("pt.quantity_search >= ?", rq.GetViews())
 	}
 	if rq.GetSlug() != "" {
-		ss.And("pt.slug = ?", rq.GetSlug())
+		ss.And("pt.slug LIKE ?", "%"+rq.GetSlug()+"%")
 	}
 	// --- Điều kiện lọc theo khoảng giá ---
 	if rq.GetPriceFrom() > 0 {

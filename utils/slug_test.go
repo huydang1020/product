@@ -21,21 +21,21 @@ func Test_convertSlug(t *testing.T) {
 		log.Println(err)
 		return
 	}
-	// listPty, err := p.ListProductType(&product.ProductTypeRequest{OrderBy: "id"})
-	// if err != nil {
-	// 	log.Println("err", err)
-	// 	return
-	// }
-	// for _, pty := range listPty {
-	// 	// if pty.Slug != "" {
-	// 	// 	continue
-	// 	// }
-	// 	pty.Slug = utils.ToSlug(pty.Name)
-	// 	if err := p.UpdateProductType(pty, &product.ProductType{Id: pty.Id}); err != nil {
-	// 		log.Println("err: ", err)
-	// 		return
-	// 	}
-	// }
+	listPty, err := p.ListProductType(&product.ProductTypeRequest{OrderBy: "id"})
+	if err != nil {
+		log.Println("err", err)
+		return
+	}
+	for _, pty := range listPty {
+		// if pty.Slug != "" {
+		// 	continue
+		// }
+		pty.Slug = utils.ToSlug(pty.Name)
+		if err := p.UpdateProductType(pty, &product.ProductType{Id: pty.Id}); err != nil {
+			log.Println("err: ", err)
+			return
+		}
+	}
 	listCate, err := p.ListCategory(&product.CategoryRequest{})
 	if err != nil {
 		log.Println("err: ", err)
