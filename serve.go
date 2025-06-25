@@ -64,13 +64,6 @@ type IDatabase interface {
 	TransCreateOrder(order *pb.Order) error
 	TransUpdateOrder(order *pb.Order) error
 
-	CreateOrderDetail(orderDetail *pb.OrderDetail) error
-	UpdateOrderDetail(updator, selector *pb.OrderDetail) error
-	DeleteOrderDetail(orderDetail *pb.OrderDetail) error
-	ListOrderDetail(rq *pb.OrderDetailRequest) ([]*pb.OrderDetail, error)
-	GetOrderDetail(req *pb.OrderDetail) (*pb.OrderDetail, error)
-	CountOrderDetail(rq *pb.OrderDetailRequest) (int64, error)
-
 	CreateOrderShip(orderShip *pb.OrderShip) error
 	UpdateOrderShip(updator, selector *pb.OrderShip) error
 	DeleteOrderShip(orderShip *pb.OrderShip) error

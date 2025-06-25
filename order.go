@@ -31,11 +31,10 @@ const (
 )
 
 type DataOrder struct {
-	orderShip   []*pb.OrderShip
-	orderDetail []*pb.OrderDetail
-	totalMoney  int64
-	partnerId   string
-	storeId     string
+	orderShip  *pb.OrderShip
+	totalMoney int64
+	partnerId  string
+	storeId    string
 }
 
 func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, error) {
@@ -73,11 +72,11 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 		log.Println("CreateOrderDetail error:", err)
 		return nil, err
 	}
-	req.OrderDetails = data.orderDetail
-	req.OrderShips = data.orderShip
+	req.OrderShip = data.orderShip
 	req.TotalMoney = float64(data.totalMoney)
 	req.PartnerId = data.partnerId
 	req.StoreId = data.storeId
+	req.OrderShipId = data.orderShip.Id
 	if req.History == nil {
 		req.History = make(map[string]int64)
 	}
@@ -157,8 +156,6 @@ func (p *Product) GenerateOrderDetailsAndShips(req *pb.Order) (*DataOrder, error
 	}
 	var totalMoney int64
 	var partnerId, storeId string
-	odts := make([]*pb.OrderDetail, 0)
-	grouped := make(map[string][]*pb.OrderDetail)
 	for _, ord := range req.ProductOrdered {
 		log.Println("ord:", ord)
 		prod, err := p.Db.GetProduct(ord.ProductId)
@@ -187,51 +184,35 @@ func (p *Product) GenerateOrderDetailsAndShips(req *pb.Order) (*DataOrder, error
 			log.Println("store id not found for product type")
 			return nil, errors.New(utils.E_not_found_store_id)
 		}
-		odt := &pb.OrderDetail{
-			Id:         utils.MakeOrderDetailId(),
-			OrderId:    req.Id,
-			ProductId:  ord.ProductId,
-			Quantity:   ord.Quantity,
-			TotalPrice: price,
-			CreatedAt:  req.TimeOrder,
-		}
 		partnerId = pty.PartnerId
 		storeId = pty.StoreId
-		grouped[pty.GetStoreId()] = append(grouped[pty.GetStoreId()], odt)
 	}
-	ordships := make([]*pb.OrderShip, 0)
-	for stoId, od := range grouped {
-		if stoId == "" {
-			log.Println("store id not found for order ship")
-			return nil, errors.New(utils.E_not_found_store_id)
-		}
-		ship := &pb.OrderShip{
-			Id:              utils.MakeOrderShipId(),
-			OrderId:         req.Id,
-			StoreId:         stoId,
-			ShippingName:    req.ReceiverName,
-			ShippingPhone:   req.ReceiverPhone,
-			ShippingAddress: req.ReceiverAddress,
-			ShippingFee:     req.ShippingFee,
-			State:           pb.OrderShip_pending.String(),
-			CreatedAt:       req.TimeOrder,
-		}
-		history := map[string]int64{}
-		history[ship.State] = req.TimeOrder
-		ship.History = history
-		for _, item := range od {
-			item.OrderShipId = ship.Id
-			ship.OrderDetailId = append(ship.OrderDetailId, item.Id)
-		}
-		ordships = append(ordships, ship)
-		odts = append(odts, od...)
+	if storeId == "" {
+		log.Println("store id not found for order ship")
+		return nil, errors.New(utils.E_not_found_store_id)
+	}
+	ship := &pb.OrderShip{
+		Id:              utils.MakeOrderShipId(),
+		OrderId:         req.Id,
+		StoreId:         storeId,
+		ShippingName:    req.ReceiverName,
+		ShippingPhone:   req.ReceiverPhone,
+		ShippingAddress: req.ReceiverAddress,
+		ShippingFee:     req.ShippingFee,
+		State:           pb.OrderShip_pending.String(),
+		CreatedAt:       req.TimeOrder,
+	}
+	history := map[string]int64{}
+	history[ship.State] = req.TimeOrder
+	ship.History = history
+	for _, item := range req.ProductOrdered {
+		ship.OrderDetailId = append(ship.OrderDetailId, item.ProductId)
 	}
 	return &DataOrder{
-		orderShip:   ordships,
-		orderDetail: odts,
-		totalMoney:  totalMoney,
-		partnerId:   partnerId,
-		storeId:     storeId,
+		orderShip:  ship,
+		totalMoney: totalMoney,
+		partnerId:  partnerId,
+		storeId:    storeId,
 	}, nil
 }
 
@@ -260,7 +241,7 @@ func (p *Product) CreateOrderVNpay(ctx context.Context, req *pb.Order) (*common.
 	}
 	order.State = pb.Order_pending.String()
 	if order.MethodPayment == PAYMENT_ONLINE {
-		order.State = pb.Order_confirm.String()
+		order.State = pb.Order_confirmed.String()
 	}
 	if err := p.Db.TransCreateOrder(order); err != nil {
 		log.Println("trans insert order err:", err)
@@ -344,22 +325,34 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 		log.Println("GetOrder error:", err)
 		return nil, errors.New(utils.E_not_found_order)
 	}
-	if order.GetState() == pb.Order_completed.String() || order.GetState() == pb.Order_canceled.String() || order.GetState() == pb.Order_shipping.String() {
+
+	if order.GetState() == pb.Order_completed.String() || order.GetState() == pb.Order_cancelled.String() {
 		return nil, errors.New(utils.E_invalid_state)
 	}
-	if req.State != "" {
-		if req.History == nil {
-			req.History = make(map[string]int64)
-		}
-		req.History[req.GetState()] = time.Now().Unix()
+	if order.History == nil {
+		order.History = make(map[string]int64)
 	}
-	if err := p.Db.UpdateOrder(req, &pb.Order{Id: req.Id}); err != nil {
+	if req.History != nil {
+		for k, v := range req.History {
+			order.History[k] = v
+		}
+	}
+	if req.State != "" {
+		order.State = req.State
+		order.History[req.State] = time.Now().Unix()
+	}
+
+	if len(req.ProductOrdered) > 0 {
+		order.ProductOrdered = req.ProductOrdered
+	}
+
+	if err := p.Db.TransUpdateOrder(order); err != nil {
 		log.Println("UpdateOrder error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	if req.GetState() == pb.Order_canceled.String() || req.GetState() == pb.Order_shipping.String() {
+
+	if req.State == pb.Order_cancelled.String() || req.State == pb.Order_shipping.String() || req.State == pb.Order_completed.String() {
 		orderShip, err := p.Db.GetOrderShip(&pb.OrderShip{OrderId: req.Id})
-		log.Println("orderShip", orderShip)
 		if err != nil {
 			log.Println("GetOrderShip error:", err)
 			return nil, errors.New(utils.E_internal_error)
@@ -367,18 +360,20 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 		if orderShip.History == nil {
 			orderShip.History = make(map[string]int64)
 		}
-		var newState string
 		switch req.GetState() {
-		case pb.Order_canceled.String():
-			newState = pb.OrderShip_canceled.String()
+		case pb.Order_cancelled.String():
+			orderShip.State = pb.OrderShip_cancelled.String()
 		case pb.Order_shipping.String():
-			newState = pb.OrderShip_shipping.String()
+			orderShip.State = pb.OrderShip_shipping.String()
+		case pb.Order_completed.String():
+			orderShip.State = pb.OrderShip_delivered.String()
 		}
-		orderShip.State = newState
-		orderShip.History[newState] = time.Now().Unix()
-		if err := p.Db.UpdateOrderShip(orderShip, &pb.OrderShip{Id: orderShip.Id}); err != nil {
-			log.Println("UpdateOrderShip error:", err)
-			return nil, errors.New(utils.E_internal_error)
+		if orderShip.State != "" {
+			orderShip.History[orderShip.State] = time.Now().Unix()
+			if err := p.Db.UpdateOrderShip(orderShip, &pb.OrderShip{Id: orderShip.Id}); err != nil {
+				log.Println("UpdateOrderShip error:", err)
+				return nil, errors.New(utils.E_internal_error)
+			}
 		}
 	}
 	return &common.Empty{}, nil
@@ -636,7 +631,7 @@ func (p *Product) UpdateOrderShipStatus(ctx context.Context, req *pb.OrderShip) 
 		log.Println("GetOrderShip error:", err)
 		return nil, errors.New(utils.E_not_found_order_ship)
 	}
-	if orderShip.State == pb.OrderShip_canceled.String() || orderShip.State == pb.OrderShip_returned.String() {
+	if orderShip.State == pb.OrderShip_cancelled.String() || orderShip.State == pb.OrderShip_returned.String() {
 		return nil, errors.New(utils.E_invalid_state)
 	}
 	orderShip.State = req.GetState()
