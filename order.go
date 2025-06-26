@@ -92,6 +92,10 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 			log.Println("insert order err:", err)
 			return nil, errors.New(utils.E_internal_error)
 		}
+		_, err = p.DeleteCartItem(ctx, &pb.Cart{Item: req.ProductOrdered, UserId: req.UserId})
+		if err != nil {
+			log.Println("err: ", err)
+		}
 		return &pb.Order{}, nil
 	case PAYMENT_ONLINE:
 		vnpUrl := os.Getenv("VNP_URL")

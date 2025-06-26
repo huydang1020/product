@@ -4,16 +4,12 @@ import (
 	"context"
 	"errors"
 	"log"
+	"math"
 	"time"
 
 	"github.com/huyshop/header/common"
 	pb "github.com/huyshop/header/product"
 	"github.com/huyshop/product/utils"
-)
-
-const (
-	DESC = "desc"
-	ASC  = "asc"
 )
 
 func (p *Product) CreateProductType(ctx context.Context, req *pb.ProductType) (*common.Empty, error) {
@@ -139,6 +135,7 @@ func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeReques
 		pty.Products = listPr
 
 		pty.Category = mapCate[pty.GetCategoryId()]
+		pty.AverageRating = float32(math.Ceil(float64(pty.GetAverageRating())*10) / 10)
 	}
 	count, err := p.Db.CountProductType(req)
 	if err != nil {
@@ -171,7 +168,7 @@ func (p *Product) GetProductType(ctx context.Context, req *pb.ProductTypeRequest
 	pty.Reviews = listReview
 	pty.TotalReviews = int32(len(listReview))
 	rate := p.CaculateAvgrating(listReview)
-	pty.AverageRating = rate
+	pty.AverageRating = float32(math.Ceil(float64(rate)*10) / 10)
 	return pty, nil
 }
 
