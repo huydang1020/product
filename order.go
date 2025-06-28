@@ -331,7 +331,7 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 	}
 
 	switch req.GetState() {
-	case pb.Order_confirmed.String():
+	case pb.Order_confirmed.String(), pb.Order_cancelled.String():
 		if order.GetState() != pb.Order_pending.String() {
 			return nil, errors.New(utils.E_invalid_state)
 		}
@@ -341,10 +341,6 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 		}
 	case pb.Order_completed.String():
 		if order.GetState() != pb.Order_shipping.String() {
-			return nil, errors.New(utils.E_invalid_state)
-		}
-	case pb.Order_cancelled.String():
-		if order.GetState() != pb.Order_confirmed.String() && order.GetState() != pb.Order_shipping.String() {
 			return nil, errors.New(utils.E_invalid_state)
 		}
 	}
@@ -359,6 +355,7 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 
 	order.State = req.State
 	order.History = string(byteHistory)
+	order.CancelReason = req.CancelReason
 
 	if err := p.Db.TransUpdateOrder(order); err != nil {
 		log.Println("UpdateOrder error:", err)
