@@ -160,7 +160,7 @@ func (p *Product) GetProductType(ctx context.Context, req *pb.ProductTypeRequest
 		return nil, errors.New(utils.E_internal_error)
 	}
 	pty.Products = listProduct
-	listReview, err := p.Db.ListReview(&pb.ReviewRequest{ProductTypeId: pty.Id})
+	listReview, err := p.Db.ListReviews(&pb.ReviewsRequest{ProductTypeId: pty.Id})
 	if err != nil {
 		log.Println("list review err: ", err)
 		return nil, errors.New(utils.E_internal_error)

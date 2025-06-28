@@ -818,31 +818,22 @@ func (d *DB) TransUpdateOrder(order *pb.Order) error {
 		return errors.New(utils.E_not_found)
 	}
 	if order.State == pb.Order_cancelled.String() {
-		if order.GetMethodPayment() == "online" {
-			// If the order is canceled, we need to restore the product quantity.
-			for _, item := range order.GetProductOrdered() {
-				pro, err := d.GetProduct(item.GetProductId())
-				if err != nil {
-					log.Print(err)
-					sess.Rollback()
-					return errors.New(utils.E_not_found_product)
-				}
-				// Restore the product quantity.
-				_, err = sess.Exec("UPDATE product SET quantity = quantity + ? WHERE id = ?", item.GetQuantity(), item.GetProductId())
-				if err != nil {
-					log.Print(err)
-					sess.Rollback()
-					return errors.New(utils.E_can_not_update_product)
-				}
-				// Restore the quantity sold.
-				_, err = sess.Exec("UPDATE product_type SET quantity_sold = quantity_sold - ? WHERE id = ?", item.GetQuantity(), pro.GetProductTypeId())
-				if err != nil {
-					log.Print(err)
-					sess.Rollback()
-					return errors.New(utils.E_can_not_update_product)
-				}
+		for _, item := range order.GetProductOrdered() {
+			_, err := d.GetProduct(item.GetProductId())
+			if err != nil {
+				log.Print(err)
+				sess.Rollback()
+				return errors.New(utils.E_not_found_product)
+			}
+			// Restore the product quantity.
+			_, err = sess.Exec("UPDATE product SET quantity = quantity + ? WHERE id = ?", item.GetQuantity(), item.GetProductId())
+			if err != nil {
+				log.Print(err)
+				sess.Rollback()
+				return errors.New(utils.E_can_not_update_product)
 			}
 		}
+
 	}
 	if order.State == pb.Order_completed.String() {
 		for _, item := range order.GetProductOrdered() {
@@ -959,61 +950,61 @@ func (d *DB) CountOrderShip(rq *pb.OrderShipRequest) (int64, error) {
 	return d.listOrderShipQuery(rq).Count()
 }
 
-func (d *DB) CreateReview(review *pb.Review) error {
-	c, err := d.engine.Insert(review)
+func (d *DB) CreateReviews(reviews *pb.Reviews) error {
+	c, err := d.engine.Insert(reviews)
 	if err != nil {
 		return err
 	}
 	if c == 0 {
-		return errors.New(utils.E_can_not_insert_review)
+		return errors.New(utils.E_can_not_insert_reviews)
 	}
 	return nil
 }
 
-func (d *DB) UpdateReview(updator, selector *pb.Review) error {
+func (d *DB) UpdateReviews(updator, selector *pb.Reviews) error {
 	c, err := d.engine.Update(updator, selector)
 	if err != nil {
 		return err
 	}
 	if c == 0 {
-		log.Println("update review failed")
+		log.Println("update reviews failed")
 		return nil
 	}
 	return nil
 }
 
-func (d *DB) DeleteReview(review *pb.Review) error {
-	c, err := d.engine.ID(review.Id).Delete(review)
+func (d *DB) DeleteReviews(reviews *pb.Reviews) error {
+	c, err := d.engine.ID(reviews.Id).Delete(reviews)
 	if err != nil {
 		return err
 	}
 	if c == 0 {
-		return errors.New(utils.E_can_not_delete_review)
+		return errors.New(utils.E_can_not_delete_reviews)
 	}
 	return nil
 }
 
-func (d *DB) GetReview(review *pb.Review) (*pb.Review, error) {
-	exist, err := d.engine.Get(review)
+func (d *DB) GetReviews(reviews *pb.Reviews) (*pb.Reviews, error) {
+	exist, err := d.engine.Get(reviews)
 	if err != nil {
 		return nil, err
 	}
 	if !exist {
-		return nil, errors.New(utils.E_not_found_review)
+		return nil, errors.New(utils.E_not_found_reviews)
 	}
-	return review, nil
+	return reviews, nil
 }
 
-func (d *DB) IsReviewExist(review *pb.Review) bool {
-	any, err := d.engine.Exist(review)
+func (d *DB) IsReviewsExist(reviews *pb.Reviews) bool {
+	any, err := d.engine.Exist(reviews)
 	if err != nil {
 		return false
 	}
 	return any
 }
 
-func (d *DB) listReviewQuery(rq *pb.ReviewRequest) *xorm.Session {
-	ss := d.engine.Table(tblReview)
+func (d *DB) listReviewsQuery(rq *pb.ReviewsRequest) *xorm.Session {
+	ss := d.engine.Table(tblReviews)
 	if rq.GetIds() != nil {
 		ss.In("id", rq.GetIds())
 	} else if rq.GetId() != "" {
@@ -1041,9 +1032,9 @@ func (d *DB) listReviewQuery(rq *pb.ReviewRequest) *xorm.Session {
 	return ss
 }
 
-func (d *DB) ListReview(rq *pb.ReviewRequest) ([]*pb.Review, error) {
-	reviews := make([]*pb.Review, 0)
-	ss := d.listReviewQuery(rq)
+func (d *DB) ListReviews(rq *pb.ReviewsRequest) ([]*pb.Reviews, error) {
+	reviews := make([]*pb.Reviews, 0)
+	ss := d.listReviewsQuery(rq)
 	if rq.GetLimit() > 0 {
 		ss.Limit(int(rq.GetLimit()), int(rq.GetLimit()*rq.GetSkip()))
 	}
@@ -1058,6 +1049,6 @@ func (d *DB) ListReview(rq *pb.ReviewRequest) ([]*pb.Review, error) {
 	return reviews, nil
 }
 
-func (d *DB) CountReview(rq *pb.ReviewRequest) (int64, error) {
-	return d.listReviewQuery(rq).Count()
+func (d *DB) CountReviews(rq *pb.ReviewsRequest) (int64, error) {
+	return d.listReviewsQuery(rq).Count()
 }
