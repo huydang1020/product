@@ -721,6 +721,15 @@ func (d *DB) listOrderQuery(rq *pb.OrderRequest) *xorm.Session {
 	} else if rq.GetId() != "" {
 		ss.And("id = ?", rq.GetId())
 	}
+	if rq.GetOrderCode() != "" {
+		ss.And("order_code = ?", rq.GetOrderCode())
+	}
+	if rq.GetReceiverName() != "" {
+		ss.And("receiver_name like ?", "%"+rq.GetReceiverName()+"%")
+	}
+	if rq.GetReceiverPhone() != "" {
+		ss.And("receiver_phone = ?", rq.GetReceiverPhone())
+	}
 	if rq.GetStoreIds() != nil {
 		ss.In("store_id", rq.GetStoreIds())
 	} else if rq.GetStoreId() != "" {
