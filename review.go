@@ -89,6 +89,9 @@ func (p *Product) UpdateReviews(ctx context.Context, req *pb.Reviews) (*common.E
 		return nil, errors.New(utils.E_not_found_reviews_id)
 	}
 	req.UpdatedAt = time.Now().Unix()
+	if req.SellerReply != "" {
+		req.SellerReplyAt = time.Now().Unix()
+	}
 	if err := p.Db.UpdateReviews(req, &pb.Reviews{Id: req.Id}); err != nil {
 		return nil, err
 	}
