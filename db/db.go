@@ -1035,6 +1035,11 @@ func (d *DB) listReviewsQuery(rq *pb.ReviewsRequest) *xorm.Session {
 	if rq.GetRating() != 0 {
 		ss.And("rating = ?", rq.GetRating())
 	}
+	if rq.GetIsSellerReply() == "true" {
+		ss.And("seller_reply is not null")
+	} else if rq.GetIsSellerReply() == "false" {
+		ss.And("seller_reply is null")
+	}
 	if rq.GetProductTypeId() != "" {
 		ss.And("product_type_id = ?", rq.GetProductTypeId())
 	}
