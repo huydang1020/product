@@ -554,13 +554,8 @@ func (p *Product) DeleteCartItem(ctx context.Context, req *pb.Cart) (*pb.Cart, e
 	if req.GetUserId() == "" {
 		return nil, errors.New(utils.E_not_found_user_id)
 	}
-	proId := req.GetItem()[0].ProductId
-	if proId == "" {
-		return nil, errors.New(utils.E_not_found_product_id)
-	}
-	_, err := p.Db.GetProduct(proId)
-	if err != nil {
-		return nil, errors.New(utils.E_not_found_product)
+	if len(req.Item) < 1 {
+		return nil, errors.New(utils.E_not_found_item_cart)
 	}
 	keyCartRedis := REDIS_KEY_CART + fmt.Sprint(req.GetUserId())
 	result, err := p.cache.Get(ctx, keyCartRedis).Result()
@@ -576,7 +571,17 @@ func (p *Product) DeleteCartItem(ctx context.Context, req *pb.Cart) (*pb.Cart, e
 		log.Println("unmarshal err:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	delete(itemCart, proId)
+	for _, item := range req.Item {
+		if item.GetProductId() == "" {
+			log.Println("err: ", utils.E_not_found_product_id, "item: ", item)
+			continue
+		}
+		if _, err := p.Db.GetProduct(item.GetProductId()); err != nil {
+			log.Println("err: ", utils.E_not_found_product, err)
+			continue
+		}
+		delete(itemCart, item.ProductId)
+	}
 	if len(itemCart) == 0 {
 		if err := p.cache.Del(ctx, keyCartRedis).Err(); err != nil {
 			log.Println("delete redis key err:", err)
