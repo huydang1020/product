@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"os"
 	"sort"
@@ -18,6 +19,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/huyshop/header/common"
 	pb "github.com/huyshop/header/product"
+	upb "github.com/huyshop/header/user"
 	"github.com/huyshop/product/utils"
 )
 
@@ -80,11 +82,26 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 	history[pb.Order_pending.String()] = time.Now().Unix()
 	byteHistory, _ := json.Marshal(history)
 	req.History = string(byteHistory)
+	totalProductMoney := float64(data.totalMoney)
+	var discount float64
 	if req.CodeId != "" && req.Voucher != nil {
-		discount := float64(req.Voucher.Discount) / float64(100)
-		req.TotalMoney = req.TotalMoney - (req.TotalMoney * discount)
+		if totalProductMoney >= float64(req.Voucher.MinTotalBillValue) {
+			if req.Voucher.DiscountPercent > 0 {
+				percentDiscount := totalProductMoney * float64(req.Voucher.DiscountPercent) / 100
+				if req.Voucher.MaxDiscountCashValue > 0 && percentDiscount > float64(req.Voucher.MaxDiscountCashValue) {
+					percentDiscount = float64(req.Voucher.MaxDiscountCashValue)
+				}
+				discount = percentDiscount
+			} else if req.Voucher.DiscountCash > 0 {
+				discount = float64(req.Voucher.DiscountCash)
+			}
+		}
 	}
-	req.TotalMoney = req.TotalMoney + float64(req.ShippingFee)
+
+	req.TotalMoney = totalProductMoney - discount + float64(req.ShippingFee)
+	if req.TotalMoney < 0 {
+		req.TotalMoney = 0
+	}
 	switch req.MethodPayment {
 	case PAYMENT_COD:
 		if err := p.Db.TransCreateOrder(req); err != nil {
@@ -391,6 +408,21 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 			}
 		}
 	}
+
+	if req.State == pb.Order_completed.String() {
+		points := int64(order.TotalMoney * 0.001)
+		if points > 0 {
+			exchange := &upb.PointExchange{
+				ReceiverId:  order.UserId,
+				Points:      points,
+				Description: fmt.Sprintf("Tích %v điểm từ đơn hàng %s", points, order.Id),
+				SenderId:    order.UserId,
+			}
+			if err := CreateExchangePoint(exchange); err != nil {
+				log.Println("CreateExchangePoint error:", err)
+			}
+		}
+	}
 	return &common.Empty{}, nil
 }
 
@@ -669,4 +701,22 @@ func (p *Product) UpdateOrderShipStatus(ctx context.Context, req *pb.OrderShip) 
 		return nil, errors.New(utils.E_internal_error)
 	}
 	return &common.Empty{}, nil
+}
+
+func CreateExchangePoint(rq *upb.PointExchange) error {
+	log.Println("CreateExchangePoint:", rq)
+	exchangePointURL := "http://localhost:8080/v1/user/create-point-exchange"
+	bin, err := json.Marshal(rq)
+	if err != nil {
+		return err
+	}
+	code, body, err := utils.SendReqPost(exchangePointURL, map[string]string{"Content-Type": "application/json"}, bin)
+	if err != nil {
+		return err
+	}
+	if code != http.StatusOK {
+		log.Println("debug: ", string(body), err, exchangePointURL)
+		return errors.New("status_not_eq_200")
+	}
+	return nil
 }

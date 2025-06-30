@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"bytes"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
@@ -101,4 +104,27 @@ func ToSlug(input string) string {
 	// Thay nhiều dấu cách thành dấu gạch ngang
 	re := regexp.MustCompile(`\s+`)
 	return re.ReplaceAllString(strings.TrimSpace(slug.String()), "-")
+}
+
+func SendReqPost(url string, headers map[string]string, body []byte) (int, []byte, error) {
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return 0, nil, err
+	}
+	if headers != nil {
+		for k, val := range headers {
+			req.Header.Set(k, val)
+		}
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer func() {
+		req.Close = true
+		resp.Body.Close()
+	}()
+	body, _ = io.ReadAll(resp.Body)
+	return resp.StatusCode, body, nil
 }
