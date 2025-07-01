@@ -417,7 +417,6 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 				ReceiverId:  order.UserId,
 				Points:      points,
 				Description: fmt.Sprintf("Tích %v điểm từ đơn hàng %s", points, order.OrderCode),
-				SenderId:    order.UserId,
 			}
 			if err := CreateExchangePoint(exchange); err != nil {
 				log.Println("CreateExchangePoint error:", err)
