@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -410,12 +411,12 @@ func (p *Product) UpdateStateOrder(ctx context.Context, req *pb.Order) (*common.
 	}
 
 	if req.State == pb.Order_completed.String() {
-		points := int64(order.TotalMoney * 0.001)
+		points := int64(math.Round(float64(order.TotalMoney) * 0.001))
 		if points > 0 {
 			exchange := &upb.PointExchange{
 				ReceiverId:  order.UserId,
 				Points:      points,
-				Description: fmt.Sprintf("Tích %v điểm từ đơn hàng %s", points, order.Id),
+				Description: fmt.Sprintf("Tích %v điểm từ đơn hàng %s", points, order.OrderCode),
 				SenderId:    order.UserId,
 			}
 			if err := CreateExchangePoint(exchange); err != nil {
