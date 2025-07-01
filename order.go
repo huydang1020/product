@@ -706,7 +706,7 @@ func (p *Product) UpdateOrderShipStatus(ctx context.Context, req *pb.OrderShip) 
 
 func CreateExchangePoint(rq *upb.PointExchange) error {
 	log.Println("CreateExchangePoint:", rq)
-	exchangePointURL := "http://localhost:8080/v1/user/create-point-exchange"
+	exchangePointURL := config.UserHost + "/v1/user/create-point-exchange"
 	bin, err := json.Marshal(rq)
 	if err != nil {
 		return err

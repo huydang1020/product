@@ -22,6 +22,7 @@ type Configs struct {
 	RedisPassword   string
 	RedisDb         string
 	RedisCartExpire string
+	UserHost        string
 }
 
 var config *Configs
@@ -40,6 +41,7 @@ func init() {
 		RedisPassword:   os.Getenv("REDIS_PASSWORD"),
 		RedisDb:         os.Getenv("REDIS_DB"),
 		RedisCartExpire: os.Getenv("REDIS_CART_EXPIRE"),
+		UserHost:        os.Getenv("USER_HOST"),
 	}
 }
 
