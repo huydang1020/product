@@ -49,15 +49,6 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 		log.Println("not found product order")
 		return nil, errors.New(utils.E_not_found_product)
 	}
-	if req.GetReceiverName() == "" {
-		return nil, errors.New(utils.E_invalid_receiver_name)
-	}
-	if req.GetReceiverPhone() == "" {
-		return nil, errors.New(utils.E_invalid_receiver_phone)
-	}
-	if req.GetReceiverAddress() == "" {
-		return nil, errors.New(utils.E_invalid_receiver_address)
-	}
 	// if req.GetStoreId() == "" {
 	// 	return nil, errors.New(utils.E_invalid_store_id)
 	// }
@@ -69,7 +60,7 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 	if req.ShippingFee == 0 {
 		req.ShippingFee = 30000
 	}
-	data, err := p.GenerateOrderDetailsAndShips(req)
+	data, err := p.GenerateOrderShips(req)
 	if err != nil {
 		log.Println("CreateOrderDetail error:", err)
 		return nil, err
@@ -161,19 +152,10 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 	return &pb.Order{}, errors.New(utils.E_invalid_method_payment)
 }
 
-func (p *Product) GenerateOrderDetailsAndShips(req *pb.Order) (*DataOrder, error) {
+func (p *Product) GenerateOrderShips(req *pb.Order) (*DataOrder, error) {
 	if len(req.ProductOrdered) < 1 {
 		log.Println("not found product order")
 		return nil, errors.New(utils.E_not_found_product)
-	}
-	if req.GetReceiverName() == "" {
-		return nil, errors.New(utils.E_invalid_receiver_name)
-	}
-	if req.GetReceiverPhone() == "" {
-		return nil, errors.New(utils.E_invalid_receiver_phone)
-	}
-	if req.GetReceiverAddress() == "" {
-		return nil, errors.New(utils.E_invalid_receiver_address)
 	}
 	var totalMoney int64
 	var partnerId, storeId string
@@ -213,15 +195,12 @@ func (p *Product) GenerateOrderDetailsAndShips(req *pb.Order) (*DataOrder, error
 		return nil, errors.New(utils.E_not_found_store_id)
 	}
 	ship := &pb.OrderShip{
-		Id:              utils.MakeOrderShipId(),
-		OrderId:         req.Id,
-		StoreId:         storeId,
-		ShippingName:    req.ReceiverName,
-		ShippingPhone:   req.ReceiverPhone,
-		ShippingAddress: req.ReceiverAddress,
-		ShippingFee:     req.ShippingFee,
-		State:           pb.OrderShip_pending.String(),
-		CreatedAt:       req.TimeOrder,
+		Id:          utils.MakeOrderShipId(),
+		OrderId:     req.Id,
+		StoreId:     storeId,
+		ShippingFee: req.ShippingFee,
+		State:       pb.OrderShip_pending.String(),
+		CreatedAt:   req.TimeOrder,
 	}
 	history := map[string]int64{}
 	history[ship.State] = req.TimeOrder
@@ -287,7 +266,7 @@ func (p *Product) ListOrder(ctx context.Context, req *pb.OrderRequest) (*pb.Orde
 		log.Println("ListOrder error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-	if len(list) < 1 {
+	if len(list) <= 0 {
 		log.Println("ListOrder empty")
 		return &pb.Orders{}, nil
 	}
@@ -308,7 +287,7 @@ func (p *Product) ListOrder(ctx context.Context, req *pb.OrderRequest) (*pb.Orde
 		log.Println("CountOrder error:", err)
 		return nil, errors.New(utils.E_internal_error)
 	}
-
+	log.Println("lits", count)
 	return &pb.Orders{Orders: list, Total: int32(count)}, nil
 }
 
