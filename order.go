@@ -44,6 +44,9 @@ func (p *Product) CreateOrder(ctx context.Context, req *pb.Order) (*pb.Order, er
 	if req.GetUserId() == "" {
 		return nil, errors.New(utils.E_not_found_user_id)
 	}
+	if req.GetUserAddressId() == "" {
+		return nil, errors.New(utils.E_not_found_user_address_id)
+	}
 	log.Println("req:", req)
 	if len(req.ProductOrdered) < 1 {
 		log.Println("not found product order")
