@@ -744,6 +744,12 @@ func (d *DB) listOrderQuery(rq *pb.OrderRequest) *xorm.Session {
 	if rq.GetPartnerId() != "" {
 		ss.And("partner_id = ?", rq.GetPartnerId())
 	}
+	if rq.GetFrom() != 0 {
+		ss.And("time_order >= ?", rq.GetFrom())
+	}
+	if rq.GetTo() != 0 {
+		ss.And("time_order <= ?", rq.GetTo())
+	}
 	return ss
 }
 
