@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"math"
+	"sort"
 	"time"
 
 	"github.com/huyshop/header/common"
@@ -132,6 +133,17 @@ func (p *Product) ListProductType(ctx context.Context, req *pb.ProductTypeReques
 			log.Println("err list product nil:", pty.Id)
 			continue
 		}
+		sort.SliceStable(listPr, func(i, j int) bool {
+			if req.OrderBy != "" {
+				switch req.OrderBy {
+				case "price_asc":
+					return listPr[i].SellPrice < listPr[j].SellPrice
+				case "price_desc":
+					return listPr[i].SellPrice > listPr[j].SellPrice
+				}
+			}
+			return listPr[i].SellPrice < listPr[j].SellPrice
+		})
 		pty.Products = listPr
 
 		pty.Category = mapCate[pty.GetCategoryId()]

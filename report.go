@@ -61,41 +61,121 @@ func (p *Product) GetReportOverview(ctx context.Context, req *pb.ReportRequest) 
 func (p *Product) GetReportRevenue(ctx context.Context, req *pb.ReportRequest) (*pb.ReportRevenue, error) {
 	// Gom nhóm doanh thu theo ngày/tháng/năm dựa vào GroupBy
 	orderReq := &pb.OrderRequest{
-		State:   pb.Order_completed.String(),
-		OrderBy: req.OrderBy,
+		State:     pb.Order_completed.String(),
+		PartnerId: req.PartnerId,
 	}
 	orders, err := p.Db.ListOrder(orderReq)
 	if err != nil {
 		return nil, err
 	}
 	groupBy := req.GroupBy // "day", "month", "year"
-	labelMap := map[string]int64{}
+
+	// Tạo map để lưu trữ doanh thu theo từng đơn vị thời gian
+	revenueMap := make(map[string]int64)
+
+	// Tính toán doanh thu theo từng đơn vị thời gian
 	for _, o := range orders {
 		t := time.Unix(o.TimeOrder, 0)
-		var label string
+		var key string
 		switch groupBy {
 		case "month":
-			label = t.Format("2006-01")
+			key = t.Format("2006-01")
 		case "year":
-			label = t.Format("2006")
+			key = t.Format("2006")
 		default:
-			label = t.Format("2006-01-02")
+			key = t.Format("2006-01-02")
 		}
-		labelMap[label] += int64(o.TotalMoney)
+		revenueMap[key] += int64(o.TotalMoney)
 	}
+
+	// Tạo labels và values dựa trên groupBy
+	labels := make([]string, 0)
+	values := make([]int64, 0)
+
+	switch groupBy {
+	case "month":
+		// Tạo tất cả các ngày trong tháng cho mỗi tháng có dữ liệu
+		for monthKey := range revenueMap {
+			// Parse tháng để lấy năm và tháng
+			monthTime, err := time.Parse("2006-01", monthKey)
+			if err != nil {
+				continue
+			}
+
+			// Tạo tất cả các ngày trong tháng
+			year, month, _ := monthTime.Date()
+			daysInMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+
+			for day := 1; day <= daysInMonth; day++ {
+				dayLabel := time.Date(year, month, day, 0, 0, 0, 0, time.UTC).Format("2006-01-02")
+				labels = append(labels, dayLabel)
+
+				// Chỉ hiển thị doanh thu cho những ngày thực sự có đơn hàng
+				// Tìm doanh thu theo ngày cụ thể từ orders
+				dailyRevenue := int64(0)
+				for _, order := range orders {
+					orderTime := time.Unix(order.TimeOrder, 0)
+					if orderTime.Format("2006-01-02") == dayLabel {
+						dailyRevenue += int64(order.TotalMoney)
+					}
+				}
+				values = append(values, dailyRevenue)
+			}
+		}
+
+	case "year":
+		// Tạo tất cả các tháng trong năm cho mỗi năm có dữ liệu
+		for yearKey := range revenueMap {
+			// Parse năm để lấy năm
+			yearTime, err := time.Parse("2006", yearKey)
+			if err != nil {
+				continue
+			}
+
+			// Tạo tất cả các tháng trong năm
+			year := yearTime.Year()
+			for month := 1; month <= 12; month++ {
+				monthLabel := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC).Format("2006-01")
+				labels = append(labels, monthLabel)
+
+				// Chỉ hiển thị doanh thu cho những tháng thực sự có đơn hàng
+				// Tìm doanh thu theo tháng cụ thể từ orders
+				monthlyRevenue := int64(0)
+				for _, order := range orders {
+					orderTime := time.Unix(order.TimeOrder, 0)
+					if orderTime.Format("2006-01") == monthLabel {
+						monthlyRevenue += int64(order.TotalMoney)
+					}
+				}
+				values = append(values, monthlyRevenue)
+			}
+		}
+
+	default: // "day"
+		// Tạo tất cả các ngày có dữ liệu
+		for dayKey := range revenueMap {
+			labels = append(labels, dayKey)
+			values = append(values, revenueMap[dayKey])
+		}
+	}
+
 	// Sắp xếp label tăng dần
-	labels := make([]string, 0, len(labelMap))
-	for k := range labelMap {
-		labels = append(labels, k)
-	}
 	sort.Strings(labels)
-	values := make([]int64, 0, len(labels))
-	for _, l := range labels {
-		values = append(values, labelMap[l])
+	// Sắp xếp lại values theo thứ tự của labels đã sort
+	sortedValues := make([]int64, len(labels))
+	for i, label := range labels {
+		// Tìm lại giá trị tương ứng
+		for j, originalLabel := range labels {
+			if originalLabel == label {
+				sortedValues[i] = values[j]
+				break
+			}
+		}
 	}
+
 	return &pb.ReportRevenue{
 		Labels: labels,
-		Values: values,
+		Values: sortedValues,
 	}, nil
 }
 
