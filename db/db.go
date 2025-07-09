@@ -267,44 +267,52 @@ func (d *DB) ListProductType(rq *pb.ProductTypeRequest) ([]*pb.ProductType, erro
 	return productTypes, nil
 }
 
-func (d *DB) listProductTypeQueryOld(rq *pb.ProductTypeRequest) *xorm.Session {
-	ss := d.engine.Table(tblProductType)
-	if rq.GetIds() != nil {
-		ss.In("id", rq.GetIds())
-	} else if rq.GetId() != "" {
-		ss.And("id = ?", rq.GetId())
-	}
-	if rq.GetName() != "" {
-		ss.And("name like ?", "%"+rq.GetName()+"%")
-	}
-	if rq.GetCategoryId() != "" {
-		ss.And("category_id = ?", rq.GetCategoryId())
-	}
-	if rq.GetState() != "" {
-		ss.And("state = ?", rq.GetState())
-	}
-	if len(rq.GetPartnerIds()) > 0 {
-		ss.In("partner_id", rq.GetPartnerIds())
-	} else if rq.GetPartnerId() != "" {
-		ss.And("partner_id = ?", rq.GetPartnerId())
-	}
-	if rq.GetStoreId() != "" {
-		ss.And("store_id = ?", rq.GetStoreId())
-	}
-	if rq.GetQuantitySold() > 0 {
-		ss.And("quantity_sold >= ?", rq.GetQuantitySold())
-	}
-	if rq.GetViews() > 0 {
-		ss.And("quantity_search >= ?", rq.GetViews())
-	}
-	if rq.GetSlug() != "" {
-		ss.And("slug = ?", rq.GetSlug())
-	}
-	return ss
-}
+// func (d *DB) listProductTypeQueryOld(rq *pb.ProductTypeRequest) *xorm.Session {
+// 	ss := d.engine.Table(tblProductType)
+// 	if rq.GetIds() != nil {
+// 		ss.In("id", rq.GetIds())
+// 	} else if rq.GetId() != "" {
+// 		ss.And("id = ?", rq.GetId())
+// 	}
+// 	if rq.GetName() != "" {
+// 		ss.And("name like ?", "%"+rq.GetName()+"%")
+// 	}
+// 	if rq.GetCategoryId() != "" {
+// 		ss.And("category_id = ?", rq.GetCategoryId())
+// 	}
+// 	if rq.GetState() != "" {
+// 		ss.And("state = ?", rq.GetState())
+// 	}
+// 	if len(rq.GetPartnerIds()) > 0 {
+// 		ss.In("partner_id", rq.GetPartnerIds())
+// 	} else if rq.GetPartnerId() != "" {
+// 		ss.And("partner_id = ?", rq.GetPartnerId())
+// 	}
+// 	if rq.GetStoreId() != "" {
+// 		ss.And("store_id = ?", rq.GetStoreId())
+// 	}
+// 	if rq.GetQuantitySold() > 0 {
+// 		ss.And("quantity_sold >= ?", rq.GetQuantitySold())
+// 	}
+// 	if rq.GetViews() > 0 {
+// 		ss.And("quantity_search >= ?", rq.GetViews())
+// 	}
+// 	if rq.GetSlug() != "" {
+// 		ss.And("slug = ?", rq.GetSlug())
+// 	}
+// 	return ss
+// }
 
 func (d *DB) CountProductType(rq *pb.ProductTypeRequest) (int64, error) {
-	return d.listProductTypeQueryOld(rq).Count()
+	var ids []string
+	ss := d.listProductTypeQuery(rq)
+	// Ghi đè select chỉ lấy id
+	ss.Select("pt.id")
+	ss.GroupBy("pt.id")
+	if err := ss.Find(&ids); err != nil {
+		return 0, err
+	}
+	return int64(len(ids)), nil
 }
 
 func (d *DB) CreateProduct(product *pb.Product) error {
