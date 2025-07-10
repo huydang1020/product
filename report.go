@@ -16,6 +16,8 @@ func (p *Product) GetReportOverview(ctx context.Context, req *pb.ReportRequest) 
 		From:    req.StartDate,
 		To:      req.EndDate,
 		OrderBy: req.OrderBy,
+		PartnerId: req.PartnerId,
+		
 	}
 	orders, err := p.Db.ListOrder(orderReq)
 	if err != nil {
