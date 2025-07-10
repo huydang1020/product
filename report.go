@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"sort"
 	"time"
 
@@ -10,14 +11,14 @@ import (
 
 // GetReportOverview lấy tổng quan về doanh thu, số đơn hàng, trạng thái đơn hàng, số shop hoạt động, số user mới
 func (p *Product) GetReportOverview(ctx context.Context, req *pb.ReportRequest) (*pb.ReportOverview, error) {
+	log.Println("GetReportOverview called with request:", req)
 	// Tổng doanh thu và tổng số đơn hàng (chỉ tính đơn hoàn thành)
 	orderReq := &pb.OrderRequest{
-		State:   pb.Order_completed.String(),
-		From:    req.StartDate,
-		To:      req.EndDate,
-		OrderBy: req.OrderBy,
+		From:      req.StartDate,
+		To:        req.EndDate,
+		OrderBy:   req.OrderBy,
 		PartnerId: req.PartnerId,
-		
+		StoreId:   req.StoreId,
 	}
 	orders, err := p.Db.ListOrder(orderReq)
 	if err != nil {
@@ -28,34 +29,38 @@ func (p *Product) GetReportOverview(ctx context.Context, req *pb.ReportRequest) 
 		totalRevenue += int64(o.TotalMoney)
 	}
 	totalOrders := int32(len(orders))
-
-	// Đếm trạng thái đơn hàng
 	orderStatus := &pb.OrderStatusCount{}
-	// Completed
-	orderStatus.Completed = totalOrders
-	// Processing (ví dụ: đang chờ xử lý)
-	processingReq := &pb.OrderRequest{
-		State:   pb.Order_pending.String(),
-		From:    req.StartDate,
-		To:      req.EndDate,
-		OrderBy: req.OrderBy,
+	// Đếm trạng thái đơn hàng
+	for _, ord := range orders {
+		switch ord.State {
+		case pb.Order_pending.String():
+			orderStatus.Pending++
+		case pb.Order_confirmed.String():
+			orderStatus.Confirmed++
+		case pb.Order_shipping.String():
+			orderStatus.Shipping++
+		case pb.Order_completed.String():
+			orderStatus.Completed++
+		case pb.Order_processing.String():
+			orderStatus.Processing++
+		case pb.Order_cancelled.String():
+			orderStatus.Cancelled++
+		}
 	}
-	processingOrders, _ := p.Db.ListOrder(processingReq)
-	orderStatus.Processing = int32(len(processingOrders))
-	// Cancelled
-	cancelReq := &pb.OrderRequest{
-		State:   pb.Order_cancelled.String(),
-		From:    req.StartDate,
-		To:      req.EndDate,
-		OrderBy: req.OrderBy,
+	log.Println("orderStatus:", orderStatus)
+	listPty, err := p.Db.CountProductType(&pb.ProductTypeRequest{
+		PartnerId: req.PartnerId,
+		From:      req.StartDate,
+		To:        req.EndDate,
+	})
+	if err != nil {
+		return nil, err
 	}
-	cancelOrders, _ := p.Db.ListOrder(cancelReq)
-	orderStatus.Cancelled = int32(len(cancelOrders))
-
 	return &pb.ReportOverview{
 		TotalRevenue: totalRevenue,
 		TotalOrders:  totalOrders,
 		OrderStatus:  orderStatus,
+		NewProduct:   int32(listPty),
 	}, nil
 }
 

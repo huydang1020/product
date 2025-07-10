@@ -210,6 +210,12 @@ func (d *DB) listProductTypeQuery(rq *pb.ProductTypeRequest) *xorm.Session {
 	if rq.GetSlug() != "" {
 		ss.And("pt.slug LIKE ?", "%"+rq.GetSlug()+"%")
 	}
+	if rq.GetFrom() > 0 {
+		ss.And("pt.created_at >= ?", rq.GetFrom())
+	}
+	if rq.GetTo() > 0 {
+		ss.And("pt.created_at <= ?", rq.GetTo())
+	}
 	// --- Điều kiện lọc theo khoảng giá ---
 	if rq.GetPriceFrom() > 0 {
 		ss.And("p.sell_price >= ?", rq.GetPriceFrom())
