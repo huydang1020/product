@@ -244,6 +244,14 @@ func (p *Product) CreateOrderVNpay(ctx context.Context, req *pb.Order) (*common.
 	if order.MethodPayment == PAYMENT_ONLINE {
 		order.State = pb.Order_confirmed.String()
 	}
+	history := map[string]int64{}
+	if err := json.Unmarshal([]byte(order.GetHistory()), &history); err != nil {
+		log.Println("unmarshal err:", err)
+		return nil, errors.New(utils.E_internal_error)
+	}
+	history[pb.Order_confirmed.String()] = time.Now().Unix()
+	byteHistory, _ := json.Marshal(history)
+	order.History = string(byteHistory)
 	if err := p.Db.TransCreateOrder(order); err != nil {
 		log.Println("trans insert order err:", err)
 		return nil, errors.New(utils.E_internal_error)
