@@ -60,7 +60,7 @@ func (p *Product) GetReportOverview(ctx context.Context, req *pb.ReportRequest) 
 		TotalRevenue: totalRevenue,
 		TotalOrders:  totalOrders,
 		OrderStatus:  orderStatus,
-		NewProduct:   int32(listPty),
+		TotalProduct: int32(listPty),
 	}, nil
 }
 
