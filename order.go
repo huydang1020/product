@@ -286,7 +286,7 @@ func (p *Product) ListOrder(ctx context.Context, req *pb.OrderRequest) (*pb.Orde
 			for _, item := range order.GetProductOrdered() {
 				prod, err := p.Db.GetProduct(item.GetProductId())
 				if err != nil {
-					log.Println("GetProduct error:", err)
+					log.Println("GetProduct error:", err, order.Id)
 					return nil, errors.New(utils.E_internal_error)
 				}
 				item.Product = prod

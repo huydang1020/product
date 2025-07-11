@@ -470,10 +470,16 @@ func (d *DB) TransUpdateProductType(in *pb.ProductType) error {
 		sess.Rollback()
 		return err
 	}
-	mProducts := map[string]*pb.Product{}
+
+	// Tạo map để track sản phẩm cũ theo name và origin_price
+	oldProductsByNamePrice := make(map[string]*pb.Product)
 	for _, item := range oldProducts {
-		mProducts[item.Id] = item
+		key := item.GetName() + "|" + fmt.Sprintf("%d", item.GetOriginPrice())
+		oldProductsByNamePrice[key] = item
 	}
+
+	// Track các sản phẩm đã được xử lý để tránh trùng lặp
+	processedOldProducts := make(map[string]bool)
 
 	for _, pro := range in.GetProducts() {
 		if pro.GetState() == "" {
@@ -482,42 +488,84 @@ func (d *DB) TransUpdateProductType(in *pb.ProductType) error {
 		if pro.GetOriginPrice() < 0 || pro.GetSellPrice() < 0 {
 			return errors.New(utils.E_invalid_price)
 		}
-		_, has := mProducts[pro.Id]
-		if has {
-			if _, err := sess.Update(pro, &pb.Product{Id: pro.GetId()}); err != nil {
-				log.Print(err)
-				sess.Rollback()
-				return err
+
+		// Kiểm tra nếu sản phẩm có ID (update trực tiếp)
+		if pro.GetId() != "" {
+			// Tìm sản phẩm cũ theo ID
+			var oldProduct *pb.Product
+			for _, old := range oldProducts {
+				if old.GetId() == pro.GetId() {
+					oldProduct = old
+					break
+				}
 			}
-			delete(mProducts, pro.GetId())
-			continue
+
+			if oldProduct != nil {
+				// Update sản phẩm cũ với thông tin mới
+				if _, err := sess.Update(pro, &pb.Product{Id: pro.GetId()}); err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return err
+				}
+				processedOldProducts[oldProduct.GetId()] = true
+			} else {
+				// ID không tồn tại, tạo mới
+				pro.Id = utils.MakeProductId()
+				pro.CreatedAt = time.Now().Unix()
+				pro.ProductTypeId = in.GetId()
+				if _, err := sess.Insert(pro); err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return err
+				}
+			}
+		} else {
+			// Sản phẩm mới không có ID, kiểm tra theo name và origin_price
+			key := pro.GetName() + "|" + fmt.Sprintf("%d", pro.GetOriginPrice())
+			oldProduct, exists := oldProductsByNamePrice[key]
+
+			if exists && !processedOldProducts[oldProduct.GetId()] {
+				// Thay thế sản phẩm cũ bằng thông tin mới, giữ ID cũ
+				pro.Id = oldProduct.GetId()
+				pro.CreatedAt = oldProduct.GetCreatedAt()
+				pro.ProductTypeId = in.GetId()
+
+				if _, err := sess.Update(pro, &pb.Product{Id: oldProduct.GetId()}); err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return err
+				}
+				processedOldProducts[oldProduct.GetId()] = true
+			} else {
+				// Tạo sản phẩm mới
+				pro.Id = utils.MakeProductId()
+				pro.CreatedAt = time.Now().Unix()
+				pro.ProductTypeId = in.GetId()
+				if _, err := sess.Insert(pro); err != nil {
+					log.Print(err)
+					sess.Rollback()
+					return err
+				}
+			}
 		}
-		if pro.GetId() == "" {
-			pro.Id = utils.MakeProductId()
-			pro.CreatedAt = time.Now().Unix()
-			pro.ProductTypeId = in.GetId()
-		}
-		if _, err := sess.Insert(pro); err != nil {
-			log.Print(err)
-			sess.Rollback()
-			return err
-		}
-		continue
 	}
-	if len(mProducts) > 0 {
-		for id, _ := range mProducts {
-			count, err = sess.Where("id = ?", id).Delete(&pb.Product{})
+
+	// Inactive các sản phẩm cũ không được xử lý
+	for _, oldProduct := range oldProducts {
+		if !processedOldProducts[oldProduct.GetId()] {
+			// Inactive sản phẩm cũ thay vì xóa
+			_, err = sess.Where("id = ?", oldProduct.GetId()).Update(&pb.Product{
+				State:     "inactive",
+				UpdatedAt: time.Now().Unix(),
+			})
 			if err != nil {
 				log.Print(err)
 				sess.Rollback()
 				return err
 			}
-			if count < 1 {
-				sess.Rollback()
-				return errors.New(utils.E_can_not_delete_product)
-			}
 		}
 	}
+
 	return sess.Commit()
 }
 
