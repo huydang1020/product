@@ -867,14 +867,12 @@ func (d *DB) TransCreateOrder(order *pb.Order) error {
 			sess.Rollback()
 			return errors.New(utils.E_not_enough_quantity)
 		}
-		if order.GetMethodPayment() == "online" {
-			// Update the quantity sold for each product in the order.
-			_, err = sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", orderItem.GetQuantity(), orderItem.GetProductId())
-			if err != nil {
-				log.Print(err)
-				sess.Rollback()
-				return errors.New(utils.E_can_not_update_product)
-			}
+		// Update the quantity sold for each product in the order (for both online and cod)
+		_, err = sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", orderItem.GetQuantity(), orderItem.GetProductId())
+		if err != nil {
+			log.Print(err)
+			sess.Rollback()
+			return errors.New(utils.E_can_not_update_product)
 		}
 	}
 	log.Println("done")
@@ -926,15 +924,6 @@ func (d *DB) TransUpdateOrder(order *pb.Order) error {
 				log.Print(err)
 				sess.Rollback()
 				return errors.New(utils.E_can_not_update_product)
-			}
-			// Nếu là COD thì trừ tồn kho sản phẩm
-			if order.GetMethodPayment() == "cod" {
-				_, err = sess.Exec("UPDATE product SET quantity = quantity - ? WHERE id = ?", item.GetQuantity(), item.GetProductId())
-				if err != nil {
-					log.Print(err)
-					sess.Rollback()
-					return errors.New(utils.E_can_not_update_product)
-				}
 			}
 		}
 	}
