@@ -29,23 +29,43 @@ var config *Configs
 
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading env:", err)
+
+	if _, err := os.Stat(".env"); err == nil {
+		err := godotenv.Load()
+		if err != nil {
+			log.Println("Warning: Error loading .env file:", err)
+		} else {
+			log.Println("Loaded .env file for local development")
+		}
+	} else {
+		log.Println("No .env file found, using system environment variables")
 	}
+
 	config = &Configs{
-		GRPCPort:        os.Getenv("GRPC_PORT"),
-		DBPath:          os.Getenv("DB_PATH"),
-		DBName:          os.Getenv("DB_NAME"),
-		RedisAddr:       os.Getenv("REDIS_ADDR"),
-		RedisPassword:   os.Getenv("REDIS_PASSWORD"),
-		RedisDb:         os.Getenv("REDIS_DB"),
-		RedisCartExpire: os.Getenv("REDIS_CART_EXPIRE"),
-		UserHost:        os.Getenv("USER_HOST"),
+		GRPCPort:        getEnv("GRPC_PORT", "8000"),
+		DBPath:          getEnv("DB_PATH", ".root:123456@tcp(localhost:3306)"),
+		DBName:          getEnv("DB_NAME", "product"),
+		RedisAddr:       getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPassword:   getEnv("REDIS_PASSWORD", ""),
+		RedisDb:         getEnv("REDIS_DB", "0"),
+		RedisCartExpire: getEnv("REDIS_CART_EXPIRE", "3600"),
+		UserHost:        getEnv("USER_HOST", "localhost:6001"),
 	}
 }
 
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
 func startApp(ctx *cli.Context) error {
+	log.Printf("Starting product service with config:")
+	log.Printf("  GRPC Port: %s", config.GRPCPort)
+	log.Printf("  DB Path: %s", config.DBPath)
+	log.Printf("  DB Name: %s", config.DBName)
+	log.Printf("  Redis Addr: %s", config.RedisAddr)
 	v, err := NewProduct(config)
 	if err != nil {
 		log.Fatal(err)

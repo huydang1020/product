@@ -2,7 +2,7 @@ module github.com/huyshop/product
 
 go 1.23.7
 
-replace github.com/huyshop/header v0.0.109 => ../header
+replace github.com/huyshop/header => ../header
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
