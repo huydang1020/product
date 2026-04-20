@@ -27,8 +27,8 @@ Tạo file `.env` ở thư mục gốc của project (có thể tham khảo file
 # Cổng chạy gRPC server
 GRPC_PORT=8000
 
-# Cấu hình kết nối MySQL (Format: user:password@tcp(host:port))
-DB_PATH=root:123456@tcp(localhost:3306)
+# Cấu hình kết nối MySQL
+DB_PATH=user:password@tcp(host:port)
 DB_NAME=product
 
 # Cấu hình kết nối Redis
@@ -46,21 +46,27 @@ USER_HOST=localhost:6001
 Dự án sử dụng `Makefile` và `urfave/cli/v2` để quản lý các lệnh chạy.
 
 ### 1. Khởi tạo Database (Tạo bảng tự động)
+
 Trước khi chạy ứng dụng lần đầu tiên, bạn cần khởi tạo các bảng trong Database:
+
 ```bash
 make cdb
 # hoặc chạy lệnh trực tiếp: go build && ./product createDb
 ```
 
 ### 2. Khởi chạy Service
+
 Chạy service ở chế độ bình thường:
+
 ```bash
 make start
 # hoặc chạy lệnh trực tiếp: go build && ./product start
 ```
 
 ### 3. Build file thực thi (Binary)
+
 Build ứng dụng thành file thực thi cho môi trường Linux (sử dụng cho Docker/Production):
+
 ```bash
 make build
 # Lệnh thực thi: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o product .
@@ -71,12 +77,14 @@ make build
 Dự án đã có sẵn `Dockerfile` (sử dụng base image `alpine:3.14`) tối ưu dung lượng cho môi trường production.
 
 1. **Build image**:
+
 ```bash
 make build # Build file binary (product) trước
 docker build -t huyshop/product:latest .
 ```
 
 2. **Chạy container**:
+
 ```bash
 docker run -d \
   -p 8000:8000 \
@@ -86,4 +94,5 @@ docker run -d \
 ```
 
 ## 🧹 Quản lý bộ nhớ (Memory Management)
+
 Service được tích hợp sẵn một goroutine chạy nền để tự động thu gom rác (Garbage Collection - GC) và giải phóng bộ nhớ cho hệ điều hành (`debug.FreeOSMemory()`) định kỳ mỗi 15 phút, giúp tối ưu RAM khi chạy trên môi trường có tài nguyên hạn chế.
