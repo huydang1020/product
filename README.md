@@ -93,6 +93,3 @@ docker run -d \
   huyshop/product:latest
 ```
 
-## 🧹 Quản lý bộ nhớ (Memory Management)
-
-Service được tích hợp sẵn một goroutine chạy nền để tự động thu gom rác (Garbage Collection - GC) và giải phóng bộ nhớ cho hệ điều hành (`debug.FreeOSMemory()`) định kỳ mỗi 15 phút, giúp tối ưu RAM khi chạy trên môi trường có tài nguyên hạn chế.
